@@ -1,0 +1,57 @@
+.ll 60
+.TH qserver 1 "Feb 18, 2019" "version 1.0"
+.SH NAME
+qserver \- QuizNet server application
+.SH SYNOPSIS
+.PP
+qserver [\fBOPTIONS\fR]
+.SH DESCRIPTION
+Server application hosting a persistent repository of questions. 
+Allows clients to connect, upload, retrieve, delete, and manipulate 
+the questions hosted.
+.SH OPTIONS
+.PP
+Mandatory or optional arguments to long options are also mandatory
+or optional for any corresponding short options.
+.TP
+\fB\-p\fR \fB\-\-port=\fIPORT\fR
+Run on port
+.B PORT.
+The argument must be a 16-bit unsigned integer. The default value is 0, 
+letting the operating system assign a port.
+.TP
+\fB\-f\fR \fB\-\-filename=\fIPATH\fR
+Use repository of questions located at 
+.B PATH.
+Default path is \%./qbank.qnb. See section (5)
+.TP
+\fB\-l\fR \fB\-\-log=\fI(yes|no)\fR
+If "yes" the server will log all incoming connections, errors, 
+request length, response length, and other relevant information. 
+If "no", the server will report only the incoming
+connection's source, and the address where the request is taken.
+Default value is "yes".
+.TP
+\fB\-V\fR \fB\-\-verbose\fR
+When running on verbose mode, the server will log to standard output
+escaped serializations of, requests, responses, and exceptions.
+.TP
+\fB\-v\fR \fB\-\-version\fR
+display version and exit
+.TP
+\fB\-h\fR \fB\-\-help\fR
+display help and usage and exit
+.SH BUGS
+None known. Report to dacabdi89@ufl.edu
+.SH AUTHOR
+Written by David Cabrera (dacabdi89@ufl.edu)
+.br
+University of Florida,
+.br
+Computer Science & Information Engineering
+.br
+Networking Fundamentals, Spring 2019
+.br
+Project 1 (client application)
+.SH SEE ALSO
+qclient

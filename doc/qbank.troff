@@ -1,0 +1,136 @@
+.ll 60
+.TH qbank 5 "Feb 18, 2019" "version 1.0"
+.SH NAME
+qbank.qnb \- QuizNet repository/bank of questions
+.SH DESCRIPTION
+.br
+.SS General
+This manual page describes the format of the question bank/repository
+files used by the QuizNet server to store and maintain sets of questions.
+Each question is serialized into the file using the following format,
+.RS
+.PP
+(\fBid\fR)\\n
+.br
+(\fBtags\fR)\\n
+.br
+(\fBquestion-title\fR)\\n
+.br
+\&.\\n
+.br
+(\fBchoice-letter\fR) (\fBchoice-text\fR)\\n.\\n
+.br
+(\fBchoice-letter\fR) (\fBchoice-text\fR)\\n.\\n
+.br
+\&.\\n
+.br
+(\fBsolution-letter\fR)\\n
+.br
+.RE
+.PP
+There MUST be at least two pairs of (\fBchoice-letter\fR)
+(\fBchoice-text\fR)\\n.\\n and up to  (\fBchoice-letter\fR)
+can run all the way from 'a' to 'z'.
+.PP
+The (\fBsolution-letter\fR)\\n MUST refer to a (\fBchoice-letter\fR)
+available in the same question.
+.PP
+The program will enforce this rules. 
+If any of the normatives is violated, 
+the deserialization routines
+for each token will produce an exception.
+.SS Fields
+.TP
+\fBid\fR
+a 32\-bit unsigned unique integer identifying the question
+.TP
+\fBtags\fR
+a comma\-separated list of alphanumeric strings
+.TP
+\fBquestion-title\fR
+any number of lines with any content; as per specification this section is
+terminated by \\n.\\n, thus beware introducing such sequence would end
+the section
+.TP
+\fBchoice-letter\fR
+a character greater or equal than 'a' and smaller or equal than 'z', 
+choice-letters must be maintained in alphabetic order and 
+sequentially complete; the deserialization routine will enforce
+this rules, any violation will produce an exception
+.TP
+\fBchoice-text\fR
+an alphanumeric string describing the choice
+.TP
+\fBsolution-letter\fR
+a character greater or equal than 'a' and smaller or equal than 'z' 
+available in the set of choices provided previously; the deserialization
+routine will enforce this rules, any violation will produce an exception
+.SH NOTES
+.PP
+This filename is the default one used by \fBqserver(1)\fR if the
+option to arbitrarily set the file is not provided.
+.PP
+The server writes to this file every time a modification occurs
+on the list of questions. Both writethrough or writeback schemes
+are allowed. The server uses writethrough to prevent loss of data if
+an unexpected crash occurs.
+.SH EXAMPLE
+.PP
+The following is an example of a qbank file containing two questions.
+.PP
+.RS
+.br
+23
+.br
+presidents, US history
+.br
+Which of these is the first president of the USA?
+.br
+\&.
+.br
+(a) Thomas Jefferson
+.br
+\&.
+.br
+(b) Abraham Lincoln
+.br
+\&.
+.br
+(c) George Washington
+.br
+\&.
+.br
+(d) Benjamin Franklin
+.br
+\&.
+.br
+\&.
+.br
+c
+.sp 1
+43
+.br
+network, protocols, layered, tcp, udp
+.br
+Which of these transport layer 
+.br
+protocols provides reliable delivery?
+.br
+\&.
+.br
+(a) TCP
+.br
+\&.
+.br
+(b) UDP
+.br
+\&.
+.br
+\&.
+.br
+a
+.br
+.RE
+.SH SEE ALSO
+.PP
+\fBqclient(1)\fR \fBqserver(1)\fR
