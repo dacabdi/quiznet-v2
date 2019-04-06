@@ -52,14 +52,11 @@ class ISocket
         virtual ssize_t readFromSocket(std::ostream&, 
                                        ssize_t = __DATA_BUFFER_READ) = 0;
         virtual std::string readFromSocket(void) = 0;
-        virtual AddressDomain getAddressDomain(void) const = 0;
-        virtual Protocol getProtocol(void) const = 0;
-        virtual SocketType getSocketType(void) const = 0;
         virtual void closeSocket(void) = 0;
         virtual void shutdownSocket(void) = 0; 
         virtual void bindSocket(IHost&) = 0;
-        virtual bool isBinded(void) const = 0;
-        virtual const IHost& getBindedHost(void) const = 0;
+        virtual bool isBound(void) const = 0;
+        virtual const IHost& getBoundHost(void) const = 0;
         virtual void startListening(int = 5) = 0;
         virtual void acceptConnection(void) = 0;
         virtual void connectTo(IHost&) = 0;
