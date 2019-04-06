@@ -50,6 +50,8 @@ Both types of clients should initiate the handshake on the FIRST request made to
 
 ### REQUESTS ###
 
+If any of these requests is sent to the server without first negotiating and identifying the session, the server will reject the petition and return a `NOAUTH` error response.
+
 #### GENERAL REQUEST/RESPONSE SPECIFICATION ####
 
 All _Request_ and _Response_ messages must adhere to the following syntactic specification
@@ -89,9 +91,66 @@ Otherwise, a type `e` ERROR response will be returned indicating the reason for 
 Also know as _greeting_ or _session negotiation_ this is the FIRST request made over each session for any type of client. It lets the server get ready for the upcoming requests.
 
 ```plain-text
-s length\n
+n length\n
+client-type\n
 parameters\n
 ```
+
+###### Contestant Handshake ######
+
+For a regular _contestant_, the server expects the client to provide a `nickname` in the request. 
+
+```plain-text
+n length\n
+contestant\n
+nickname\n
+```
+
+If the `nickname` is not already in use for the current contest, the server will provide an `OK` response containing some other miscellaneous information, such as the time left before the contests starts, the number of questions, etc.
+
+```plain-text
+o length\n
+time-left\n
+no-of-questions\n
+[...]
+```
+
+After a successful handshake, the client application will wait until the server starts the contest and the questions are provided. Each round will contain one question and the server won't provide the next question until all _contestants_ have provided an answer. At that point the statistics will be shown to the _contestant_ and the next question, if any, will be presented.
+
+If the `nickname` is already in use, the server will reply with a `NCKDUP` error message. If the contest has already started (i.e, the port exists but the client is late), the server will respond with a `LATEJN` error. Any other unspecified error is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
+
+###### Contestmeister Handshake ######
+
+For a _contestmeister_, this handshake will simply setup a session.
+
+```plain-text
+n length\n
+contestmeister\n
+```
+
+Any unspecified error is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
+
+##### ANSWER #####
+
+Used by a _contestant_ to submit the answer to a question provided by the server.
+
+```plain-text
+w length\n
+choice\n
+```
+
+On success, the server will respond with an `OK` response indicating the result, stats, and the number of questions left.
+
+```plain-text
+o length\n
+result\n
+percentage-right,contestant-score,top-score\n
+questions-left\n
+```
+
+Expect a `CHNFND` error if choice does not exist. In such case, **the server will expect another `ANSWER` request**. Until an incorrect but existing choice, or a correct choice is provided, the server will remain looping in this state.
+
+Any unspecified error is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
 
 ##### POST #####
 
@@ -126,7 +185,7 @@ Please observe that the server will enforce the following rules
 4. The `choice-character` value is a unique a-z character, the choices must be in alphabetic order, and the first choice must be `a`.
 5. The `correct-answer` provided must exist in the set of choices.
 
-Expect an error response if any of this rules is violated. The error is likely to indicate what kind of violation took place by providing information in the `extra` field of the error response.
+Upon success, the server will reply with an `OK` containing the id of the newly posted question on the body of the response. Expect an error response if one or more of these rules are violated. Specifically, an attempt to post a question with an id that already exists will return a `USEDID` error. Any other violation is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
 
 ##### DELETE #####
 
@@ -137,7 +196,7 @@ d length\n
 question-id\n
 ```
 
-Expect an `NOTFND` error response if question doest not exist, or a `INVQID` if the the question id is not in a valid format (i.e., not a numeric value).
+An `OK` response containing the id of the deleted question will be issued upon success. Expect an `NOTFND` error response if question doest not exist, or a `INVQID` if the the question id is not in a valid format (i.e., not a numeric value).
 
 ##### GET #####
 
@@ -148,11 +207,21 @@ g length\n
 question-id\n
 ```
 
+A positive response will consist of a regular `OK` response containing a serialization of the question as specified in the `POST` request. That is, the body of the response will be formed as follows,
+
+```plain-text
+id\n
+tags\n
+question-title\n.\n
+choices.\n
+correct-answer\n
+```
+
 Expect an `NOTFND` error response if question doest not exist, or a `INVQID` if the the question id is not in a valid format (i.e., not a numeric value).
 
 ##### CHECK #####
 
-Check if a choice is the valid response to a question identified by its question id.
+Check if an specific choice is the valid response to a question identified by its question id.
 
 ```plain-text
 c length\n
@@ -160,7 +229,7 @@ question-id\n
 choice\n
 ```
 
-Expect a `NOTFND` error if question does not exist or a `CHNFND` if the question does not contain the provided choice.
+An `OK` response containing the result in the `body` field will be issued back. Expect a `NOTFND` error if question does not exist or a `CHNFND` if the question does not contain the provided choice.
 
 ##### KILL #####
 
@@ -171,7 +240,7 @@ k 0\n
 \n
 ```
 
-Must only be issued by a client identified as a _contestmeister_ during the session negotiation process.
+Will respond `OK` before going down. If not issued by a client that previously identified as a _contestmeister_, an error response will be issued.
 
 ##### QUIT #####
 
@@ -182,7 +251,109 @@ q 0\n
 \n
 ```
 
-If issued by a _contestmeister_, the server must gracefully drop the connection socket after receiving this request.
+If issued by a _contestmeister_, the server must gracefully drop the contest's socket after receiving this request. If issued by a regular contestant, just gracefully close the connection socket.
+
+##### REVIEW #####
+
+Review an specific contest session.
+
+```plain-text
+r length\n
+contest-id\n
+\n
+```
+
+An corresponding `OK` response will have the following syntax,
+
+```plain-text
+o length\n
+number-of-questions\n
+c-run-flag,average-correct,maximum-correct\n
+question-id,percent-right\n
+```
+
+Expect an error `CTNFND` indicating that the contest was not found if the contest id does not match any current contest on the server. Any other error is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
+
+##### SET #####
+
+Create a new contest with contest id `contest-id`.
+
+```plain-text
+s length\n
+contest-id\n
+\n
+```
+
+An `OK` response will follow the following syntax,
+
+```plain-text
+o length\n
+contest-id\n
+```
+
+Expect an error `USEDID` indicating that the contest id is already in use if such situation arises. Any other error is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
+
+##### ADD #####
+
+Add an existing question to an existing contest.
+
+```plain-text
+a length\n
+contest-id,question-id\n
+\n
+```
+
+An `OK` response will follow the following syntax,
+
+```plain-text
+o length\n
+contest-id,question-id\n
+```
+
+Expect an error `CTNFND` indicating that the contest was not found if the contest id does not match any current contest on the server. Similarly, expect a `NOTFND` if the question id does not exist in the server's bank. Any other error is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
+
+##### BEGIN #####
+
+Start a previously registered contest identified by `contest-id`.
+
+```plain-text
+s length\n
+contest-id\n
+\n
+```
+
+Upon receiving this request, the server will open a random port and map it to the `contest-id`. If successful, the server will then issue a `OK` response indicating the newly opened port. The `OK` response will follow the following syntax,
+
+```plain-text
+o length\n
+contest-id,contest-port\n
+```
+
+The new port will listen for incoming connections from _contestants_ for a window of **1 minute**. Once the waiting period has expired the server will stop taking contestants in that port and start the contest. 
+
+Expect an error `CTNFND` indicating that the contest was not found if the contest id does not match any current contest on the server. Any other error is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
+
+##### LIST #####
+
+List all contests.
+
+```plain-text
+l 0\n
+\n
+```
+
+An corresponding `OK` response will have the following syntax,
+
+```plain-text
+o length\n
+number-of-contests\n
+c-id,no-questions,c-run-flag,average-correct,maximum-correct,running-port\n
+[...]
+```
+
+Notice that the `running-port` value is optional and will be set to zero (i.e., `0`) if the contest is not currently running, (i.e., the `c-run-flag` is not set, that is, it is equal to `0`).
+
+Expect an error `CTNFND` indicating that the contest was not found if the contest id does not match any current contest on the server. Any other error is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
 
 ---
 
@@ -213,17 +384,21 @@ e length\n
 [extra]\n.\n
 ```
 
+The **optional** `extra` field will most likely contain the message generated by the inner exception that triggered the error response. It will be useful for debugging, unexpected errors, and extra circumstantial information.
+
 |no|symbol|message|extra|
 |---|---|---|---|
-|0|`UNKERR`|Unkown error|Exception message, if any|
-|1|`NOTFND`|Question not found|`[question-id]` provided|
-|2|`MALQUE`|Malformed question body|Exception message, if any|
-|3|`CHNFND`|Choice does not exist in question|`[choice]` and `[question-id]`|
-|4|`UNKREQ`|Server does not know how to handle request type|Received request type|
-|5|`INVQID`|Invalid format for question id provided|Provided id|
-|6|`EMPTYQ`|Empty quiz book|None|
-|7|`REQTSZ`|Request type length must be one character|Type provided|
-
+| 0|`UNKERR`|Unknown error|Inner exception message, if any|
+| 1|`NOTFND`|Question not found|`[question-id]` provided|
+| 2|`MALQUE`|Malformed question body|Exception message, if any|
+| 3|`CHNFND`|Choice does not exist in question|`[choice]` and `[question-id]`|
+| 4|`UNKREQ`|Server does not know how to handle request type|Received request type|
+| 5|`INVQID`|Invalid format for question id provided|Provided id|
+| 6|`EMPTYQ`|Empty quiz book|None|
+| 7|`REQTSZ`|Request type length must be one character|Type provided|
+| 8|`USEDID`|The proposed id is already in use|Provided id|
+| 9|`CTNFND`|Contest not found|Provided contest id|
+|10|`LATEJN`|Contest has already started|Provided contest id|
 ---
 
 ## IMPLEMENTATION ##
