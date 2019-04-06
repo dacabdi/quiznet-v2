@@ -1,4 +1,4 @@
-CNT4007C - **Project 1**
+CNT4007C - **Project 2**
 02/18/2019
 David Cabrera
 dacabdi89@ufl.edu
@@ -11,57 +11,48 @@ dacabdi89@ufl.edu
 
 ## USAGE ##
 
-#### BUILDING ####
+### BUILDING ###
 
 To build the solution you can either,
-- `$ make qclient`,
-- `$ make qserver`,
-- or `$ make all` to build both applications.
+
+- `$ make cserver`,
+- `$ make contestmeister`,
+- `$ make contestant`,
+- or `$ make all` to build all applications.
 
 The `makefile` provides comprehensive recipes to run tests, compile in debug mode with no optimizations, or produce manual entries. To run in debug mode set `MODE=debug` before calling on `make`. See `makefile` for more details.
 
-#### RUNNING ####
+### RUNNING ###
 
-The applications can be run as per the specifications of the project. After building the solution, you can run the server application by issuing the command
+Please note that all three applications have been implemented using POSIX command line options with `getopt` and `getopt_long`. Please use options `-h` or `--help` on each executable for further usage details.
 
-`$ ./qserver`
+#### `cserver` ####
 
-standing on the same subdirectory where the `make` command was issued.
+After building the solution, you can run the _contest server_ application by issuing the command `$ ./cserver [-p PORT]` standing on the root subdirectory of the project. You can pass the `-p PORT` option and specify the port where you which to run the server on, otherwise it will obtain a randomly assigned port.
 
-Similarly, the client application can be started by issuing the command,
+The server application provides logging and verbosity options. Run with `--verbose` or `-v` for complete escaped reporting of serialized representations of both requests and responses.
 
-`./qclient TARGETHOST PORT`.
+#### `contestmeister` ####
 
-Please note that both `qclient` and `qserver` have been implemented using POSIX command line options with `getopt` and `getopt_long`. 
-Use option `-h` on both executables for further usage details.
+The _contestmeister_'s application can be started by issuing the command, `./contestmeister TARGETHOST PORT`. Where the `TARGETHOST` and `PORT` will indicate the server over which the contestmeister will exert arbitrage.
 
-Run `qclient` with the option `--nonpersistent` or `-n` for non persistent mode (See _Additional Features_ section).
+#### `contestant` ####
 
-The server application provides logging and verbosity options.
-Run with `--verbose` or `-v` for complete escaped reporting of
-serialized representations of both requests and responses.
-
-Refer to the corresponding manual entries for details.
-
-#### MANUAL ENTRIES ####
-
-Due to the inability to run `man -l manual-entry` on the `storm.cise.ufl.edu` host, the command to properly visualize the manual entry will be,
-
-`$ nroff -Tascii -man [file] | less`
+The _contestant_ can be started by issuing the command, `./contestant TARGETHOST CONTESTPORT`. Where the `TARGETHOST` will be that of the contest server and the `CONTESTPORT` will match the port assigned to the ongoing contest the contestant whishes to join.
 
 ---
 
 ## PROTOCOL SPECIFICATION ##
 
-Before any request or response, the client MUST perform an application level _handshake_ by which it gives notice to the server on the type of session (persistent vs non persistent) it wishes to establish, as well as any other relevant information required to maintain the session.
+Before any request or response, the _contestant_ and the _contestmeister_ MUST perform an application level _handshake_ by which it gives notice to the _server_ on the type of session it wishes to establish, as well as any other relevant information required to maintain the communication.
 
-The client should initiate the handshake on the FIRST request made to the server for each connection. It will send a type `s` request containing the parameters in the `body`.
+Both types of clients should initiate the handshake on the FIRST request made to the server for each connection. It will send a type `s` request containing the parameters and identifying information in the `body`.
 
 ### REQUESTS ###
 
-#### GENERAL REQUEST SPECIFICATION ####
+#### GENERAL REQUEST/RESPONSE SPECIFICATION ####
 
-All *Requests* must adhere to the following syntactic specification
+All _Request_ and _Response_ messages must adhere to the following syntactic specification
 
 ```text
 type length\n
@@ -71,7 +62,7 @@ body\n
 |Field|Syntax|Semantics|Optional|
 |---|---|---|---|
 |`type`|Only **one** character from a-z|Indicates the type of request|No, all requests must have a `type` field|
-|`length`|A decimal nonnegative integer|Describes the length of the request's `body` in bytes|No, an empty request is expected to include a 0 length|
+|`length`|A decimal non-negative integer|Describes the length of the request's `body` in bytes|No, an empty request is expected to include a 0 length|
 |`body`|Any number of ASCII characters|Request's body and payload|Yes, but 0 length must be indicated|
 
 More precisely,
@@ -87,15 +78,15 @@ body    = ? any sequence of chars ?
         ;
 ```
 
-If the server _knows_ how to handle the incoming type of request and the request is processed succesfully, a type `o` OK response will be sent to the client carrying any requested data.
+If the server _knows_ how to handle the incoming type of request and the request is processed successfully, a type `o` OK response will be sent to the client carrying any requested data.
 
-Otherwise, a type `e` ERROR response will be returned. If the error is due to an unrecognized type of request, the error type will be numbered `UNKREQ`.
+Otherwise, a type `e` ERROR response will be returned indicating the reason for failure. If the error is due to an unrecognized type of request, the error type will be numbered `UNKREQ`.
 
 #### TYPES OF REQUESTS ####
 
 ##### HANDSHAKE #####
 
-Also know as _greeting_ or _session negotionation_ this is the FIRST request made over each session. It lets the server get ready for the upcoming requests.
+Also know as _greeting_ or _session negotiation_ this is the FIRST request made over each session for any type of client. It lets the server get ready for the upcoming requests.
 
 ```plain-text
 s length\n
@@ -114,23 +105,26 @@ body\n
 This type of request must include a `length` field and a `body` field containing,
 
 ```text
+id\n
 tags\n
 question-title\n.\n
 choices.\n
 (correct-answer)\n
 ```
 
-1. `tags` field with zero or more comma separated tags.
-2. `question-title` with a string of alphanumeric and white space characters terminated by the sequence `\n.\n`.
-3. Any number of `choices` of the form `(choice-character) choice-text\n.\n` followed by an additional `\n.\n` that ends the section.
-4. The correct answer `correct-answer` followed by an end of line.
+1. `id` numeric field with proposed question id
+2. `tags` field with zero or more comma separated tags.
+3. `question-title` with a string of alphanumeric and white space characters terminated by the sequence `\n.\n`.
+4. Any number of `choices` of the form `(choice-character) choice-text\n.\n` followed by an additional `\n.\n` that ends the section.
+5. The correct answer `correct-answer` followed by an end of line.
 
 Please observe that the server will enforce the following rules
 
-1. A question must contain at least 2 choices.
-2. Every choice must be of the format `(choice-character) choice-text\n.\n`.
-3. The `choice-character` value is a unique a-z character, the choices must be in alphabetic order, and the first choice must be `a`.
-4. The `correct-answer` provided must exist in the set of choices.
+1. The id must not be already in use.
+2. A question must contain at least 2 choices.
+3. Every choice must be of the format `(choice-character) choice-text\n.\n`.
+4. The `choice-character` value is a unique a-z character, the choices must be in alphabetic order, and the first choice must be `a`.
+5. The `correct-answer` provided must exist in the set of choices.
 
 Expect an error response if any of this rules is violated. The error is likely to indicate what kind of violation took place by providing information in the `extra` field of the error response.
 
@@ -143,7 +137,7 @@ d length\n
 question-id\n
 ```
 
-Expect an `NOTFND` error response if question doest not exist, or a `INVQID` if the the question id is not a numeric value.
+Expect an `NOTFND` error response if question doest not exist, or a `INVQID` if the the question id is not in a valid format (i.e., not a numeric value).
 
 ##### GET #####
 
@@ -154,18 +148,7 @@ g length\n
 question-id\n
 ```
 
-Expect an `NOTFND` error response if question doest not exist, or a `INVQID` if the the question id is not a numeric value.
-
-##### GETR #####
-
-Request a random question.
-
-```plain-text
-r 0\n
-\n
-```
-
-Expect an `EMPTYQ` error response if the server has an empty quiz book.
+Expect an `NOTFND` error response if question doest not exist, or a `INVQID` if the the question id is not in a valid format (i.e., not a numeric value).
 
 ##### CHECK #####
 
@@ -188,6 +171,8 @@ k 0\n
 \n
 ```
 
+Must only be issued by a client identified as a _contestmeister_ during the session negotiation process.
+
 ##### QUIT #####
 
 Inform the server that the client wishes to leave.
@@ -197,7 +182,7 @@ q 0\n
 \n
 ```
 
-This request is relevant only to _persistent_ connections.
+If issued by a _contestmeister_, the server must gracefully drop the connection socket after receiving this request.
 
 ---
 
@@ -214,7 +199,7 @@ o length\n
 body\n
 ```
 
-The content fo the body of the response will depend on the particular request that caused the response.
+The content for the body of the response will depend on the particular request that caused the response.
 
 ##### ERROR #####
 
