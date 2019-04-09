@@ -1,6 +1,10 @@
 #ifndef __TESTS_H__
 #define __TESTS_H__
 
+#include "Except.h"
+#include "ProtoExcept.h"
+#include "Utils.h"
+
 #include <iostream>
 #include <ostream>
 #include <fstream>
@@ -12,9 +16,6 @@
 #include <map>
 #include <mutex>
 
-#include <stdexcept>
-#include "Except.h"
-
 #define __RED__   "\033[31m"
 #define __GRN__   "\033[32m"
 #define __YLW__   "\033[33m"
@@ -22,7 +23,7 @@
 #define __CYN__   "\033[36m"
 #define __MAG__   "\033[35m"
 
-// TODO: use a singleton for all these
+// TODO: use a singleton for all these, make atomic
 std::ostringstream ____report;
 std::mutex ____report_mutex;
 
@@ -44,6 +45,12 @@ try {\
 
 #define CASE(name) { name, []() -> bool { try{ 
 #define ENDCASE \
+    } catch(const ProtoExcept &e){\
+        std::unique_lock<std::mutex> l(____report_mutex);\
+        ____report << __RED__ << "Test Case ended on 'ProtoExcept' exception" << std::endl;\
+        ____report << __MAG__ << e.what() << __RESET__ << std::endl;\
+        l.unlock();\
+        return false;\
     } catch(const Except &e){\
         std::unique_lock<std::mutex> l(____report_mutex);\
         ____report << __RED__ << "Test Case ended on 'Except' exception" << std::endl;\
@@ -105,12 +112,37 @@ bool assertEqual
 }
 
 // char array
-bool assertEqual(char *actual, char *expected)
+bool assertEqual(const std::string& actual, const std::string& expected, const bool escape = true)
 {
-    return assertEqual<char *>(actual, expected, 
+    return assertEqual<std::string>(
+        escape ? utils::escape(actual) : actual,
+        escape ? utils::escape(expected) : expected
+    );
+}
+
+// char array
+bool assertEqual(char *actual, char *expected, const bool escape = true)
+{
+    if(escape)
+    {
+        actual = utils::escape(actual);
+        expected = utils::escape(expected);
+    }
+
+    bool r = assertEqual<char *>(
+        escape ? utils::escape(actual) : actual, 
+        escape ? utils::escape(expected) : expected,
         [](char *& a, char *& b) -> bool {
             return (strcmp(a, b) == 0);
         });
+
+    if(escape)
+    {
+        delete [] actual;
+        delete [] expected;
+    }
+
+    return r;
 }
 
 // vector
@@ -207,7 +239,7 @@ bool runTest(const std::string& name, std::function<bool (void)> t)
 
     bool r = t();
     
-    std::cout << (r ? (std::string(__GRN__) + "[OK]") 
+    std::cout << (r ? (std::string(__GRN__) + "[PASSED]") 
                     : (std::string(__RED__) + "[FAILED]")) 
               << __RESET__ << std::endl;
     
@@ -233,8 +265,8 @@ bool runTestSuite(std::map<const std::string, std::function<bool (void)>> tests)
         }
     }
 
-    std::cout << "\nTotal  : " << tests.size() << std::endl;
-    std::cout <<   "Failed : " << failed << std::endl;
+    std::cout << " Total  : " << tests.size();
+    std::cout << "\tFailed : " << failed << std::endl;
 
     return result;
 }

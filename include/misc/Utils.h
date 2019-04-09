@@ -1,8 +1,6 @@
 #ifndef __UTILS__H__
 #define __UTILS__H__
 
-#include "Error.h"
-
 #include <string>
 #include <vector>
 #include <map>
@@ -14,12 +12,11 @@ namespace utils
         const std::string& str,
         const std::string& delimiter = ",");
 
+    char * escape(const char *);
     std::string escape(const std::string& ref);
 
     std::string trim(const std::string& str,
                      const std::string& whitespace = " \n\t\r");
-
-    struct ErrorMessage deserializeError(std::string str);
 
     // templated functions cannot be defined in object files
     template<typename K, typename V>

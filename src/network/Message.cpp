@@ -1,101 +1,78 @@
 #include "Message.h"
 
-// BODY
-
-Body::Body(const std::string& content) 
-: _length(content.length()), _content(content) {}
-
-Body::Body() : _length(0), _content("") {}
-
-ssize_t Body::length(void) const
-{
-    return _length;
-}
-
-std::string Body::content(void) const
-{
-    return _content;
-}
-
 // MESSAGE
 
-Message::Message() : _type('\0'), _body(Body()) {};
+Message::Message() : _type('\0'), _body(Body()) {}
 
-Message::Message(char type, Body body)
+Message::Message(char type, const Body body)
 : _type(type), _body(body) {}
 
-Message::Message(char type, 
-const std::string& str)
-{
-    _type = type;
-    _body = Body(str);
-}
-
 Message::Message(const std::string& str)
-{
-    _type = readType(str);
-    _body = readBody(str);
-}
+: _type(Message::deserializeType(str)), 
+  _body(Body::deserialize(str.substr(2)))
+{}
 
-std::string Message::serialize(void)
+std::string Message::serialize(void) const
 {
     std::ostringstream oss;
-    oss << _type << " " << _body.getLength() << std::endl;
-    oss << _body.getContent();
-    oss << std::endl;
+    oss << type() << " ";
+    oss << body() << std::endl;
     return oss.str();
 }
 
-char ProtoReqModel::readType(const std::string& str)
+Message Message::deserialize(const std::string& str)
 {
-    char type;
-    try {
-        type = str.at(0);
-    } catch (const std::exception& e) {
-        throw ProtocolException(UNKERR, 
-            "Failed to read request type : " + std::string(e.what()));
-    }
-    
-    return type;
+    return Message(str);
 }
-
-Body ProtoReqModel::readBody(const std::string& str)
-{
-    ssize_t length = 0;
-    ssize_t pos;
-    try {
-        pos = str.find('\n');
-        length = std::stoul(str.substr(2, pos));
-    } catch (const std::exception& e) {
-        throw ProtocolException(UNKERR, 
-            "Failed to read [length] field" + std::string(e.what()));
-    }
     
-    std::string content = "";
-    try {
-        content = str.substr(pos+1, length);
-    } catch (const std::exception& e) {
-        throw ProtocolException(UNKERR, 
-            "Failed to read body contents : " + std::string(e.what()));
-    }
-
-    return Body(content);
-}
-
-char ProtoReqModel::getType(void) const
+char Message::type(void) const
 {
     return _type;
 }
 
-std::string ProtoReqModel::getTypeAsString(void) const
+std::string Message::typestr(void) const
 {
     std::string buff = "";
-    buff.push_back(getType());
+    buff.push_back(type());
     return buff;
 }
 
-Body ProtoReqModel::getBody(void) const
+Body Message::body(void) const
 {
     return _body;
 }
 
+bool Message::operator==(const Message& ref) const
+{
+    return type() == ref.type() && body() == ref.body();
+}
+
+bool Message::operator!=(const Message& ref) const
+{
+    return !operator==(ref);
+}
+
+std::ostream& operator<<(std::ostream &os, const Message& ref)
+{
+    os << ref.serialize();
+    return os;
+}
+
+char Message::deserializeType(const std::string& str)
+{
+    try {
+        char t = str.at(0);
+        
+        if(str.at(1) != ' ') 
+            throw std::invalid_argument("Message type is not followed by whitespace");
+        if(!isalpha(t) || !islower(t))
+            throw std::invalid_argument("Message type is not lowercase alpha");
+        
+        return t;
+    } catch (const std::exception& e) {
+        throw ProtoExcept(MSGDSL, 
+            "Failed to deserialize message's [type] field\n" 
+            "InnerException : " + std::string(e.what()) + "\n" +
+            "PassedSerialization : " + str + "\n");
+    }
+}

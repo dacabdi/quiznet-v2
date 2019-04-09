@@ -4,11 +4,12 @@
             "name": "Linux",
             "includePath": [
                 "/usr/include",
-                "${workspaceFolder}/include/**/",
+                "${workspaceFolder}/include/",
                 "${workspaceFolder}/include/network",
                 "${workspaceFolder}/include/error",
                 "${workspaceFolder}/include/tests",
-                "${workspaceFolder}/include/misc"
+                "${workspaceFolder}/include/misc",
+                "/usr/include/X11/Xmu"
             ],
             "browse": {
                 "path": [

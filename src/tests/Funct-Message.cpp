@@ -1,6 +1,8 @@
 #include "TcpSocket.h"
 #include "Test.h"
 #include "UniformRandom.h"
+#include "Message.h"
+#include "ProtoError.h"
 
 #include <string>
 #include <iostream>
@@ -12,7 +14,7 @@
 
 TEST
 
-    CASE("socketNormalBipartiteOnce")
+    CASE("sendMessageBipartite")
         // setup
         bool r = true;
 
@@ -21,16 +23,13 @@ TEST
         std::condition_variable cv;
         bool ready = false;
 
-        // result variables
-        ssize_t bytesWrtByClient;
-        std::string msgReadByClient;
-        ssize_t bytesWrtByServer;
-        std::string msgReadByServer;
+        Message sentByClient('a', "Hi this is my payload!");
+        Message sentByServer('b', "Client, you sent me a type 'a' request");
+        Message receivedByClient;
+        Message receivedByServer;
 
         // common data
-        Host h("localhost", "6666");
-        std::string msgFromClient("Hello server! This is client."),
-                    msgFromServer("Hey there client! This is server.");
+        Host h("0.0.0.0", "3360");
 
         // threads
         std::thread client([&]()
@@ -41,8 +40,8 @@ TEST
             l.lock(); while (!ready) cv.wait(l); l.unlock();
 
             s.Connect(h);
-            bytesWrtByClient = s.write(msgFromClient);
-            msgReadByClient = s.read();
+            s.write(sentByClient.serialize());
+            receivedByClient = s.read();
         });
         
         std::thread server([&]()
@@ -62,28 +61,28 @@ TEST
             // will return connection socket
             TcpSocket cs = s.Accept();
 
-            msgReadByServer = cs.read();
-            bytesWrtByServer = cs.write(msgFromServer);
+            receivedByServer = Message::deserialize(cs.read());
+            cs.write(sentByServer.serialize());
         });
 
         server.join();
         client.join();
 
         // assert
-        r = assertEqual(msgReadByClient, msgFromServer) && r;
-        r = assertEqual(msgReadByServer, msgFromClient) && r;
-        r = assertEqual((size_t)bytesWrtByClient, msgFromClient.size()) && r;
-        r = assertEqual((size_t)bytesWrtByServer, msgFromServer.size()) && r;
+        r = assertEqual(sentByClient, receivedByServer) && r;
+        r = assertEqual(sentByServer, receivedByClient) && r;
 
         return r;
     ENDCASE,
-
-    CASE("socketHugeDataExchangeOnce")
+    
+    CASE("sendHugeMessageBipartite")
         // setup
         bool r = true;
 
-        // common data
-        Host h("localhost", "110812");
+        // synchronization
+        std::mutex m;
+        std::condition_variable cv;
+        bool ready = false;
 
         std::string msgFromClient = "Hey server! Look, I'll "
                                     "send a lot of garbage:\n",
@@ -100,16 +99,13 @@ TEST
         msgFromClient.append("\n.\n");
         msgFromServer.append("\n.\n");
 
-        // synchronization
-        std::mutex m;
-        std::condition_variable cv;
-        bool ready = false;
+        Message sentByClient('a', msgFromClient);
+        Message sentByServer('b', msgFromServer);
+        Message receivedByClient;
+        Message receivedByServer;
 
-        // result variables
-        ssize_t bytesWrtByClient;
-        std::string msgReadByClient;
-        ssize_t bytesWrtByServer;
-        std::string msgReadByServer;
+        // common data
+        Host h("0.0.0.0", "3360");
 
         // threads
         std::thread client([&]()
@@ -120,8 +116,8 @@ TEST
             l.lock(); while (!ready) cv.wait(l); l.unlock();
 
             s.Connect(h);
-            bytesWrtByClient = s.write(msgFromClient);
-            msgReadByClient = s.read();
+            s.write(sentByClient.serialize());
+            receivedByClient = s.read();
         });
         
         std::thread server([&]()
@@ -141,23 +137,21 @@ TEST
             // will return connection socket
             TcpSocket cs = s.Accept();
 
-            msgReadByServer = cs.read();
-            bytesWrtByServer = cs.write(msgFromServer);
+            receivedByServer = Message::deserialize(cs.read());
+            cs.write(sentByServer.serialize());
         });
 
         server.join();
         client.join();
 
         // assert
-        r = assertEqual(msgReadByClient, msgFromServer) && r;
-        r = assertEqual(msgReadByServer, msgFromClient) && r;
-        r = assertEqual((size_t)bytesWrtByClient, msgFromClient.size()) && r;
-        r = assertEqual((size_t)bytesWrtByServer, msgFromServer.size()) && r;
+        r = assertEqual(sentByClient, receivedByServer) && r;
+        r = assertEqual(sentByServer, receivedByClient) && r;
 
         return r;
     ENDCASE,
 
-    CASE("socketNormalRandomBinding")
+    CASE("sendAnErrorMessage")
         // setup
         bool r = true;
 
@@ -165,19 +159,19 @@ TEST
         std::mutex m;
         std::condition_variable cv;
         bool ready = false;
-        Host hToConnect;
 
-        // result variables
-        ssize_t bytesWrtByClient;
-        std::string msgReadByClient;
-        ssize_t bytesWrtByServer;
-        std::string msgReadByServer;
+        ProtoError eSentByServer(CTNFND, "Nah, I can't!");
+        ProtoError eReceivedByClient;
+
+        Message sentByClient('a', "Hey, can you find Waldo?!");
+        Message sentByServer('e', eSentByServer.serialize());
+
+        Message receivedByClient;
+        Message receivedByServer;
 
         // common data
-        Host h("0.0.0.0", "0");
-        std::string msgFromClient("Hello server! This is client."),
-                    msgFromServer("Hey there client! This is server.");
-        
+        Host h("0.0.0.0", "3360");
+
         // threads
         std::thread client([&]()
         {
@@ -186,15 +180,15 @@ TEST
             
             l.lock(); while (!ready) cv.wait(l); l.unlock();
 
-            s.Connect(hToConnect);
-            bytesWrtByClient = s.write(msgFromClient);
-            msgReadByClient = s.read();
+            s.Connect(h);
+            s.write(sentByClient.serialize());
+            receivedByClient = s.read();
+            eReceivedByClient = ProtoError::deserialize(receivedByClient.body().content());
         });
         
         std::thread server([&]()
         {
             std::unique_lock<std::mutex> l(m, std::defer_lock);
-            
             TcpSocket s;
 
             s.Bind(h);
@@ -202,26 +196,24 @@ TEST
 
             // let client know im ready
             l.lock();
-                ready = true;
-                hToConnect = s.local();
+            ready = true; 
             l.unlock();
             cv.notify_all();
             
             // will return connection socket
             TcpSocket cs = s.Accept();
 
-            msgReadByServer = cs.read();
-            bytesWrtByServer = cs.write(msgFromServer);
+            receivedByServer = Message::deserialize(cs.read());
+            cs.write(sentByServer.serialize());
         });
 
         server.join();
         client.join();
 
         // assert
-        r = assertEqual(msgReadByClient, msgFromServer) && r;
-        r = assertEqual(msgReadByServer, msgFromClient) && r;
-        r = assertEqual((size_t)bytesWrtByClient, msgFromClient.size()) && r;
-        r = assertEqual((size_t)bytesWrtByServer, msgFromServer.size()) && r;
+        r = assertEqual(sentByClient, receivedByServer) && r;
+        r = assertEqual(sentByServer, receivedByClient) && r;
+        r = assertEqual(eReceivedByClient, eSentByServer) && r;
 
         return r;
     ENDCASE

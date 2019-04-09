@@ -20,6 +20,13 @@ std::vector<std::string> utils::split(
     return output;
 }
 
+char * utils::escape(const char * cstr)
+{
+    std::string sstr = utils::escape(std::string(cstr));
+    char * buff = new char[sstr.size()+1];
+    sstr.copy(buff, sstr.size());
+    return buff;
+}
 
 std::string utils::escape(const std::string& ref)
 {
@@ -45,28 +52,6 @@ std::string utils::escape(const std::string& ref)
         
     return oss.str();
 }
-
-struct ErrorMessage utils::deserializeError(std::string str)
-{
-    size_t pos = str.find_first_of("\n");
-    size_t number = std::stoul(str.substr(0, pos));
-    str.erase(0, pos+1);
-
-    pos = str.find_first_of("\n");
-    std::string symbol = str.substr(0, pos);
-    str.erase(0, pos+1);
-
-    pos = str.find_first_of("\n.\n");
-    std::string message = str.substr(0, pos);
-    str.erase(0, pos+3);
-
-    pos = str.find_first_of("\n.\n");
-    std::string extra = str.substr(0, pos);
-    str.erase(0, pos+3);
-
-    return { number, symbol, message, extra };
-}
-
 
 std::string utils::trim(const std::string& str,
                         const std::string& whitespace)

@@ -116,7 +116,8 @@ std::vector<struct sockaddr_in> Host::hostIfs(void)
     struct ifaddrs * ifs = nullptr;
     int r = getifaddrs(&ifs);
     
-    if(r) {
+    if(r) 
+    {
         if (ifs != nullptr) freeifaddrs(ifs);
         throw Except("Failed to fetch host's interfaces on passive mode", "Host::hostIfs()");
     }

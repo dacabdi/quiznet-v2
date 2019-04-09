@@ -20,24 +20,26 @@ TST_STRING   := "Testing"
 define compile_and_test
 printf "%b" "$(COM_COLOR)$(2) $(OBJ_COLOR)$(@F)$(NO_COLOR)\r"; \
 $(1) 2> $@.log; RESULT=$$?; \
-if [ $$RESULT -ne 0 ]; then printf "%-76b%b" "$(COM_COLOR)$(2)$(OBJ_COLOR) $@"    "$(ERROR_COLOR)$(ERROR_STRING)$(NO_COLOR)\n"   ; \
+if [ $$RESULT -ne 0 ]; then printf "%-76b%b" "$(COM_COLOR)$(2)$(OBJ_COLOR) $@"    "$(ERROR_COLOR)$(ERROR_STRING)$(NO_COLOR)\n"; echo $(1); \
 elif [ -s $@.log ];    then printf "%-76b%b" "$(COM_COLOR)$(2)$(OBJ_COLOR) $@"    "$(WARN_COLOR)$(WARN_STRING)$(NO_COLOR)\n"   ; \
 else                        printf "%-76b%b" "$(COM_COLOR)$(2)$(OBJ_COLOR) $(@F)" "$(OK_COLOR)$(OK_STRING)$(NO_COLOR)\n"   ; \
 fi; cat $@.log; rm -f $@.log; exit $$RESULT
 endef
 
 define run_test
-printf "%b" "$(COM_COLOR) $(TST_STRING) $(TST_COLOR)$$(basename $(1) .test)$(NO_COLOR)\r"; \
+printf "%b" "\n$(COM_COLOR) $(TST_STRING) $(TST_COLOR)$$(basename $(1) .test)$(NO_COLOR)\r"; \
 $(1) >$(1).log 2>&1 $(1).log; RESULT=$$?; \
 if [ $$RESULT -ne 0 ]; then printf "%-76b%b" "$(COM_COLOR) $(TST_STRING)$(TST_COLOR) $$(basename $(1) .test)" "$(ERROR_COLOR)$(FAILED_STRING)$(NO_COLOR)\n"   ; \
 else printf "%-76b%b" "$(COM_COLOR) $(TST_STRING)$(TST_COLOR) $$(basename $(1) .test)" "$(OK_COLOR)$(PASSED_STRING)$(NO_COLOR)\n"   ; \
-fi; \echo "\n\033[0;37m~~~~~~~~~~~~~~~~~~~~~~~~~~~ :Test Results: ~~~~~~~~~~~~~~~~~~~~~~~~~~~\033[0m\n"; \
-cat $(1).log; echo "\n\033[0;37m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\033[0m\n"; \
+fi; \
+#echo "\n\033[0;37m~~~~~~~~~~~~~~~~~~~~~~~~~~~ :Test Results: ~~~~~~~~~~~~~~~~~~~~~~~~~~~\033[0m\n";
+cat $(1).log; \
+# echo "\n\033[0;37m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\033[0m\n";
 rm -f $(1).log;
 endef
 
 define run_test_profile
-printf "%b" "$(COM_COLOR) Profiling-Test $(TST_COLOR)$$(basename $(1) .test)$(NO_COLOR)\r"; \
+printf "%b" "\n$(COM_COLOR) Profiling-Test $(TST_COLOR)$$(basename $(1) .test)$(NO_COLOR)\r"; \
 valgrind --leak-check=full $(1) >$(1).log 2>&1 $(1).log; RESULT=$$?; \
 if [ $$RESULT -ne 0 ]; then printf "%-76b%b" "$(COM_COLOR) Profiling-Test $(TST_COLOR) $$(basename $(1) .test)" "$(ERROR_COLOR)$(FAILED_STRING)$(NO_COLOR)\n"   ; \
 else printf "%-76b%b" "$(COM_COLOR) Profiling-Test $(TST_COLOR) $$(basename $(1) .test)" "$(OK_COLOR)$(PASSED_STRING)$(NO_COLOR)\n"   ; \
