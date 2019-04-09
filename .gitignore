@@ -33,3 +33,9 @@
 
 # VSCode 
 .vscode/ipch/
+
+# ignore doxygen
+doc/html/
+
+# ignore builds
+bin/

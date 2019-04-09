@@ -1,0 +1,49 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Test",
+            "type": "shell",
+            "command": "make",
+            "args":["${input:testPick}.test"],
+            "problemMatcher": [],
+            "group" : "test",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "Build All Tests",
+            "type": "shell",
+            "command": "make",
+            "args":["test"],
+            "problemMatcher": [],
+            "group" : "test",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "Build Debug Test",
+            "type": "shell",
+            "command": "make",
+            "args":["MODE=debug", "${input:testPick}.test"],
+            "problemMatcher": [],
+            "group" : "test",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        }
+    ],
+    "inputs":[
+        {
+            "id": "testPick",
+            "description": "Select a test",
+            "default": "none",
+            "type": "pickString",
+            "options": ["Unit-Host", "Unit-TcpSocket", "Funct-TcpSocket"]
+        }
+    ],
+}
