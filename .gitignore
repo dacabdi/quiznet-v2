@@ -39,3 +39,4 @@ doc/html/
 
 # ignore builds
 bin/
+bin
