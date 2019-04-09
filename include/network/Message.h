@@ -1,28 +1,41 @@
-#ifndef __REQUEST__H__
-#define __REQUEST__H__
+#ifndef __MESSAGE__H__
+#define __MESSAGE__H__
 
-#include "Exception.h"
+#include "Except.h"
 
 #include <string>
 
 class Body 
 {
+    public:
+
+        ssize_t length(void) const;
+        std::string content(void) const;
+
+        Body(const std::string& content);
+        Body();
+
     private:
         
         ssize_t _length;
         std::string _content;
-
-    public:
-
-        ssize_t getLength(void) const;
-        std::string getContent(void) const;
-
-        Body(const std::string content);
-        Body():_length(0), _content("") {};
 };
 
-class ProtoReqModel 
+class Message 
 {
+    public:
+
+        char type(void) const;
+        std::string typeStr(void) const;
+        Body body(void) const;
+
+        std::string serialize(void);
+        static Message deserialize(std::string);
+
+        Message(char type, Body body);
+        Message(const std::string& str);
+        Message(void);
+    
     protected:
         
         char _type;
@@ -30,19 +43,6 @@ class ProtoReqModel
 
         char readType(const std::string&);
         Body readBody(const std::string&);
-
-    public:
-
-        char getType(void) const;
-        std::string getTypeAsString(void) const;
-        Body getBody(void) const;
-
-        std::string serialize(void);
-
-        ProtoReqModel(char type, Body body);
-        ProtoReqModel(char type, const std::string& str);
-        ProtoReqModel(const std::string& str);
-        ProtoReqModel(){};
 };
 
 class Request : public ProtoReqModel
@@ -67,4 +67,4 @@ class Response : public ProtoReqModel
 
 
 
-#endif
+#endif // __MESSAGE_H__

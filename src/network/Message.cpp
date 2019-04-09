@@ -1,35 +1,43 @@
-#include "Request.h"
+#include "Message.h"
 
-Body::Body(const std::string content)
+// BODY
+
+Body::Body(const std::string& content) 
 : _length(content.length()), _content(content) {}
 
-ssize_t Body::getLength(void) const
+Body::Body() : _length(0), _content("") {}
+
+ssize_t Body::length(void) const
 {
     return _length;
 }
 
-std::string Body::getContent(void) const
+std::string Body::content(void) const
 {
     return _content;
 }
 
-ProtoReqModel::ProtoReqModel(char type, Body body)
+// MESSAGE
+
+Message::Message() : _type('\0'), _body(Body()) {};
+
+Message::Message(char type, Body body)
 : _type(type), _body(body) {}
 
-ProtoReqModel::ProtoReqModel(char type, 
+Message::Message(char type, 
 const std::string& str)
 {
     _type = type;
     _body = Body(str);
 }
 
-ProtoReqModel::ProtoReqModel(const std::string& str)
+Message::Message(const std::string& str)
 {
     _type = readType(str);
     _body = readBody(str);
 }
 
-std::string ProtoReqModel::serialize(void)
+std::string Message::serialize(void)
 {
     std::ostringstream oss;
     oss << _type << " " << _body.getLength() << std::endl;
