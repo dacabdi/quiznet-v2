@@ -9,7 +9,9 @@
                 "${workspaceFolder}/include/error",
                 "${workspaceFolder}/include/tests",
                 "${workspaceFolder}/include/misc",
-                "/usr/include/X11/Xmu"
+                "/usr/include/X11/Xmu",
+                "${workspaceFolder}/include/models",
+                "${workspaceFolder}/include/cserver"
             ],
             "browse": {
                 "path": [

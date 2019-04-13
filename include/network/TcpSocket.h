@@ -8,6 +8,7 @@
 #include <ostream>
 #include <string>
 #include <sstream>
+#include <thread> // for timed out accept
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -47,8 +48,9 @@ class TcpSocket
         void      Bind(const Host&) const;
         void      Bind(void) const; // binds on all ifs on random port
         void      Listen(int = __DF_BACKLOG) const;
-        TcpSocket Accept(void) const;
+        TcpSocket Accept(std::chrono::duration<std::chrono::seconds> timeout = std::chrono::seconds(60)) const;
         void      Close(void);
+        void      Shutdown(void);
         // NOTE: ^ capitalized to avoid collision with same name syscalls
         
         // state and getters

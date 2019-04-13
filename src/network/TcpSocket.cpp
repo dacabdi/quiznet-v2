@@ -138,11 +138,17 @@ void TcpSocket::Listen(int backlog) const
         throw Except("Failed to listen on socket", "TcpSocket::listen()");
 }
 
-TcpSocket TcpSocket::Accept(void) const
+TcpSocket TcpSocket::Accept(const size_t timeout) const
 {
     // accept connection
     struct sockaddr_storage address_stg;
     socklen_t address_stg_len = sizeof address_stg;
+ 
+    if (timeout)
+        std::thread timeoutThread([&](){
+            std::this_thread::wait_for()
+        });
+
     int cfd = accept(_fd, (struct sockaddr *)&address_stg, &address_stg_len);
 
     if (cfd == -1)
@@ -157,6 +163,16 @@ void TcpSocket::Close(void)
     
     if (close(_fd) != 0)
         throw Except("Failed to close socket", "TcpSocket::close()");
+
+    _fd = -1;
+}
+
+void TcpSocket::Shutdown(void)
+{
+    if(_fd == -1) return;
+    
+    if (shutdown(_fd, SHUT_RDWR) != 0)
+        throw Except("Failed to shutdown socket", "TcpSocket::shutdown()");
 
     _fd = -1;
 }

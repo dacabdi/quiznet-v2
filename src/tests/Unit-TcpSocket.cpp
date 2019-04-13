@@ -14,111 +14,128 @@ TEST
 
     CASE("socketBindLocalhostAnyPort")
         // setup
-        bool r = true;
+        
         TcpSocket s;
         s.Bind(Host("localhost", "0"));
 
         // assert
-        r = assertNotEqual(s.fd(), -1) && r;
-        r = assertEqual(s.bound(), true) && r;
-        r = assertEqual(s.local().ip(), std::string("127.0.0.1")) && r;
-        r = assertNotEqual(std::to_string(s.local().port()), std::string("0")) && r;
+        AssertNotEqual(s.fd(), -1);
+        AssertEqual(s.bound(), true);
+        AssertEqual(s.local().ip(), std::string("127.0.0.1"));
+        AssertNotEqual(std::to_string(s.local().port()), std::string("0"));
 
-        return r;
+        
     ENDCASE,
 
     CASE("socketBindLocalhostPort")
         // setup
-        bool r = true;
+        
         TcpSocket s;
         s.Bind(Host("localhost", "6666"));
 
         // assert
-        r = assertNotEqual(s.fd(), -1) && r;
-        r = assertEqual(s.bound(), true) && r;
-        r = assertEqual(s.local().ip(), std::string("127.0.0.1")) && r;
-        r = assertEqual(std::to_string(s.local().port()), std::string("6666")) && r;
+        AssertNotEqual(s.fd(), -1);
+        AssertEqual(s.bound(), true);
+        AssertEqual(s.local().ip(), std::string("127.0.0.1"));
+        AssertEqual(std::to_string(s.local().port()), std::string("6666"));
         
-        return r;
+        
     ENDCASE,
 
     CASE("socketBindOnAllIfs")
         // setup
-        bool r = true;
+        
         TcpSocket s;
         Host h = Host("0.0.0.0", "0");
         s.Bind(h);
 
         // assert
-        r = assertNotEqual(s.fd(), -1) && r;
-        r = assertEqual(s.bound(), true) && r;
+        AssertNotEqual(s.fd(), -1);
+        AssertEqual(s.bound(), true);
         
-        //r = assertEqual(s.local().ip(), std::string("127.0.0.1")) && r;
-        //r = assertEqual(std::to_string(s.local().port()), std::string("6666")) && r;
+        //AssertEqual(s.local().ip(), std::string("127.0.0.1"));
+        //AssertEqual(std::to_string(s.local().port()), std::string("6666"));
         
-        return r;
+        
     ENDCASE,
 
     CASE("nonBound_getLocalName")
         // setup
-        bool r = true;
+        
         TcpSocket s;
 
         // assert
-        r = assertNotEqual(s.fd(), -1) && r;
-        r = assertEqual(s.bound(), false) && r;
-        r = assertEqual(s.local().ip(), std::string("0.0.0.0")) && r;
-        r = assertEqual(std::to_string(s.local().port()), std::string("0")) && r;
+        AssertNotEqual(s.fd(), -1);
+        AssertEqual(s.bound(), false);
+        AssertEqual(s.local().ip(), std::string("0.0.0.0"));
+        AssertEqual(std::to_string(s.local().port()), std::string("0"));
         
-        return r;
+        
     ENDCASE,
 
     CASE("getPeerNonConnected")
         // setup
-        bool r = true;
+        
         TcpSocket s;
 
         // assert
-        r = assertNotEqual(s.fd(), -1) && r;
-        r = assertEqual(s.hasPeer(), false) && r;
+        AssertNotEqual(s.fd(), -1);
+        AssertEqual(s.hasPeer(), false);
         
-        return r;
+        
     ENDCASE,
 
     CASE("attemptConnectOnBunchOfDeadAddr")
         // setup
-        bool r = true;
+        
         TcpSocket s;
         Host ifs(nullptr, "0");
 
-        assertExcept(s.Connect(ifs), r);
+        AssertExcept(s.Connect(ifs));
 
-        return r;
+        
     ENDCASE,
 
     CASE("closedTcpSocket")
         // setup
-        bool r = true;
+        
         TcpSocket s;
         s.Close();
 
         // assert
-        r = assertEqual(s.fd(), -1) && r;
+        AssertEqual(s.fd(), -1);
 
-        assertExcept(s.bound(), r);
-        assertExcept(s.local(), r);
-        assertExcept(s.hasPeer(), r);
-        assertExcept(s.peer(), r);
+        AssertExcept(s.bound());
+        AssertExcept(s.local());
+        AssertExcept(s.hasPeer());
+        AssertExcept(s.peer());
         
-        assertExcept(s.write("dummy"), r);
-        assertExcept(s.read(), r);
+        AssertExcept(s.write("dummy"));
+        AssertExcept(s.read());
 
-        assertExcept(s.Bind(), r);
-        assertExcept(s.Accept(), r);
-        assertExcept(s.Listen(), r);
-        assertExcept(s.Connect(Host("dummy","0")), r);
+        AssertExcept(s.Bind());
+        AssertExcept(s.Accept());
+        AssertExcept(s.Listen());
+        AssertExcept(s.Connect(Host("dummy","0")));
         
-        return r;
+        
+    ENDCASE,
+
+    CASE("shutdownBlockedAcceptingSocket")
+        
+        // setup
+        TcpSocket s;
+        s.Bind();
+        s.Listen();
+
+        std::thread window_signal([&](){
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            s.Shutdown();
+        });
+
+        AssertExcept(s.Accept()); // the exception is expected
+        window_signal.join();
+
     ENDCASE
 
 ENDTEST

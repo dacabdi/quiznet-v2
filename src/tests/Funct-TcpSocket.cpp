@@ -13,9 +13,6 @@
 TEST
 
     CASE("socketNormalBipartiteOnce")
-        // setup
-        bool r = true;
-
         // synchronization
         std::mutex m;
         std::condition_variable cv;
@@ -70,18 +67,13 @@ TEST
         client.join();
 
         // assert
-        r = assertEqual(msgReadByClient, msgFromServer) && r;
-        r = assertEqual(msgReadByServer, msgFromClient) && r;
-        r = assertEqual((size_t)bytesWrtByClient, msgFromClient.size()) && r;
-        r = assertEqual((size_t)bytesWrtByServer, msgFromServer.size()) && r;
-
-        return r;
+        AssertEqual(msgReadByClient, msgFromServer);
+        AssertEqual(msgReadByServer, msgFromClient);
+        AssertEqual((size_t)bytesWrtByClient, msgFromClient.size());
+        AssertEqual((size_t)bytesWrtByServer, msgFromServer.size());
     ENDCASE,
 
     CASE("socketHugeDataExchangeOnce")
-        // setup
-        bool r = true;
-
         // common data
         Host h("localhost", "110812");
 
@@ -149,18 +141,13 @@ TEST
         client.join();
 
         // assert
-        r = assertEqual(msgReadByClient, msgFromServer) && r;
-        r = assertEqual(msgReadByServer, msgFromClient) && r;
-        r = assertEqual((size_t)bytesWrtByClient, msgFromClient.size()) && r;
-        r = assertEqual((size_t)bytesWrtByServer, msgFromServer.size()) && r;
-
-        return r;
+        AssertEqual(msgReadByClient, msgFromServer);
+        AssertEqual(msgReadByServer, msgFromClient);
+        AssertEqual((size_t)bytesWrtByClient, msgFromClient.size());
+        AssertEqual((size_t)bytesWrtByServer, msgFromServer.size());
     ENDCASE,
 
     CASE("socketNormalRandomBinding")
-        // setup
-        bool r = true;
-
         // synchronization
         std::mutex m;
         std::condition_variable cv;
@@ -218,12 +205,10 @@ TEST
         client.join();
 
         // assert
-        r = assertEqual(msgReadByClient, msgFromServer) && r;
-        r = assertEqual(msgReadByServer, msgFromClient) && r;
-        r = assertEqual((size_t)bytesWrtByClient, msgFromClient.size()) && r;
-        r = assertEqual((size_t)bytesWrtByServer, msgFromServer.size()) && r;
-
-        return r;
+        AssertEqual(msgReadByClient, msgFromServer);
+        AssertEqual(msgReadByServer, msgFromClient);
+        AssertEqual((size_t)bytesWrtByClient, msgFromClient.size());
+        AssertEqual((size_t)bytesWrtByServer, msgFromServer.size());
     ENDCASE
 
 ENDTEST

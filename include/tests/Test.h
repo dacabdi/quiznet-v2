@@ -27,23 +27,38 @@
 std::ostringstream ____report;
 std::mutex ____report_mutex;
 
-#define assertExcept(operation, r) \
+// TODO: macro overloading
+
+#define AssertEqual(a, b) __r__ = assertEqual(a, b) && __r__;
+#define AssertNotEqual(a, b) __r__ = assertNotEqual(a, b) && __r__;
+
+#define AssertEqualComp(a, b, comp) __r__ = assertEqual(a, b, comp) && __r__;
+#define AssertNotEqualComp(a, b, comp) __r__ = assertNotEqual(a, b, comp) && __r__;
+
+#define AssertEqualCompPrint(a, b, comp, print) __r__ = assertEqual(a, b, comp, print) && __r__;
+#define AssertNotEqualCompPrint(a, b, comp, print) __r__ = assertNotEqual(a, b, comp, print) && __r__;
+
+#define assertExcept(operation, __r__var__) \
 try {\
     operation;\
-    r = false;\
+    __r__var__ = false;\
     std::unique_lock<std::mutex> l(____report_mutex);\
     ____report << __RED__ << "[assertExcept Failed] on operation '" \
                << #operation << "'" << __RESET__ << "\n";\
     l.unlock();\
 } catch(...) {\
-    r = r && true;\
+    __r__var__ = __r__var__ && true;\
 }
+#define AssertExcept(operation) assertExcept(operation, __r__)
 
 #define RUNTEST int main(){ return (runTestSuite(tests) ? EXIT_SUCCESS : EXIT_FAILURE); }
 #define TEST std::map<const std::string, std::function<bool (void)>> tests = {
 #define ENDTEST };
 
-#define CASE(name) { name, []() -> bool { try{ 
+#define CASE(name) { name, []() -> bool {\
+    bool __r__ = true;\
+    try{
+
 #define ENDCASE \
     } catch(const ProtoExcept &e){\
         std::unique_lock<std::mutex> l(____report_mutex);\
@@ -69,6 +84,7 @@ try {\
         l.unlock();\
         return false;\
     }\
+    return __r__; \
 }}
 
 // report unequal

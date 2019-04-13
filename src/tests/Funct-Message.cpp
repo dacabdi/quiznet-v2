@@ -15,9 +15,6 @@
 TEST
 
     CASE("sendMessageBipartite")
-        // setup
-        bool r = true;
-
         // synchronization
         std::mutex m;
         std::condition_variable cv;
@@ -69,16 +66,12 @@ TEST
         client.join();
 
         // assert
-        r = assertEqual(sentByClient, receivedByServer) && r;
-        r = assertEqual(sentByServer, receivedByClient) && r;
+        AssertEqual(sentByClient, receivedByServer);
+        AssertEqual(sentByServer, receivedByClient);
 
-        return r;
     ENDCASE,
     
     CASE("sendHugeMessageBipartite")
-        // setup
-        bool r = true;
-
         // synchronization
         std::mutex m;
         std::condition_variable cv;
@@ -88,14 +81,12 @@ TEST
                                     "send a lot of garbage:\n",
                     msgFromServer = "That was some heavy garbage...\n"
                                     "Here, have some too:\n";
-
         UniformRandom<uint8_t> uf(97,122);
         for (size_t i = 0; i < (100*__BUFWR); ++i)
         {
             msgFromClient.push_back((char)uf.generate());
             msgFromServer.push_back((char)uf.generate());
         }
-
         msgFromClient.append("\n.\n");
         msgFromServer.append("\n.\n");
 
@@ -145,16 +136,12 @@ TEST
         client.join();
 
         // assert
-        r = assertEqual(sentByClient, receivedByServer) && r;
-        r = assertEqual(sentByServer, receivedByClient) && r;
+        AssertEqual(sentByClient, receivedByServer);
+        AssertEqual(sentByServer, receivedByClient);
 
-        return r;
     ENDCASE,
 
     CASE("sendAnErrorMessage")
-        // setup
-        bool r = true;
-
         // synchronization
         std::mutex m;
         std::condition_variable cv;
@@ -211,11 +198,10 @@ TEST
         client.join();
 
         // assert
-        r = assertEqual(sentByClient, receivedByServer) && r;
-        r = assertEqual(sentByServer, receivedByClient) && r;
-        r = assertEqual(eReceivedByClient, eSentByServer) && r;
+        AssertEqual(sentByClient, receivedByServer);
+        AssertEqual(sentByServer, receivedByClient);
+        AssertEqual(eReceivedByClient, eSentByServer);
 
-        return r;
     ENDCASE
 
 ENDTEST

@@ -5,7 +5,7 @@ TEST
 
     CASE("constructorByDeserialization")
         // setup
-        bool r = true;
+        
         
         size_t number = UNKERR;
         std::string symbol = "UNKERR";
@@ -21,19 +21,19 @@ TEST
         ProtoError e(expSerialization);
 
         // assert
-        r = assertEqual(e.number(), (const size_t)UNKERR) && r;
-        r = assertEqual(e.symbol(), symbol) && r;
-        r = assertEqual(e.msg(), message) && r;
-        r = assertEqual(e.extra(), extra) && r;
-        r = assertEqual(e.present(), presentation) && r;
-        r = assertEqual(e.serialize(), expSerialization) && r;
+        AssertEqual(e.number(), (const size_t)UNKERR);
+        AssertEqual(e.symbol(), symbol);
+        AssertEqual(e.msg(), message);
+        AssertEqual(e.extra(), extra);
+        AssertEqual(e.present(), presentation);
+        AssertEqual(e.serialize(), expSerialization);
 
-        return r;
+        
     ENDCASE,
 
     CASE("constructorByParts")
         // setup
-        bool r = true;
+        
         
         size_t number = UNKERR;
         std::string symbol = "UNKERR";
@@ -49,67 +49,67 @@ TEST
         ProtoError e(number, symbol, message, extra);
 
         // assert
-        r = assertEqual(e.number(), (const size_t)UNKERR) && r;
-        r = assertEqual(e.symbol(), symbol) && r;
-        r = assertEqual(e.msg(), message) && r;
-        r = assertEqual(e.extra(), extra) && r;
-        r = assertEqual(e.present(), presentation) && r;
-        r = assertEqual(e.serialize(), expSerialization) && r;
+        AssertEqual(e.number(), (const size_t)UNKERR);
+        AssertEqual(e.symbol(), symbol);
+        AssertEqual(e.msg(), message);
+        AssertEqual(e.extra(), extra);
+        AssertEqual(e.present(), presentation);
+        AssertEqual(e.serialize(), expSerialization);
 
-        return r;
+        
     ENDCASE,
 
     CASE("failedDeserializationMissingNumber")
         // setup
-        bool r = true;
+        
         std::string symbol = "UNKERR";
         std::string message = "Unkown error";
         std::string extra = "Extra information";
         std::string expSerialization = "\n" + symbol + "\n" + message + "\n.\n" + extra + "\n.\n";
 
         // assert
-        assertExcept(ProtoError e(expSerialization), r);
+        AssertExcept(ProtoError e(expSerialization));
 
-        return r;
+        
     ENDCASE,
 
     CASE("failedDeserializationEmpty")
         // setup
-        bool r = true;
+        
         std::string expSerialization = "";
 
         // assert
-        assertExcept(ProtoError e(expSerialization), r);
+        AssertExcept(ProtoError e(expSerialization));
 
-        return r;
+        
     ENDCASE,
 
     CASE("failedDeserializationMissingMsgTerm")
         // setup
-        bool r = true;
+        
         std::string symbol = "UNKERR";
         std::string message = "Unkown error";
         std::string extra = "Extra information";
         std::string expSerialization = "\n" + symbol + "\n" + message + "\n." + extra + "\n.\n";
 
         // assert
-        assertExcept(ProtoError e(expSerialization), r);
+        AssertExcept(ProtoError e(expSerialization));
 
-        return r;
+        
     ENDCASE,
 
     CASE("failedDeserializationMissingExtraTerm")
         // setup
-        bool r = true;
+        
         std::string symbol = "UNKERR";
         std::string message = "Unkown error";
         std::string extra = "Extra information";
         std::string expSerialization = "\n" + symbol + "\n" + message + "\n.\n" + extra + "\n";
 
         // assert
-        assertExcept(ProtoError e(expSerialization), r);
+        AssertExcept(ProtoError e(expSerialization));
 
-        return r;
+        
     ENDCASE
 
 ENDTEST

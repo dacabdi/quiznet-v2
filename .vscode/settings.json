@@ -63,5 +63,10 @@
         "condition_variable": "cpp",
         "future": "cpp",
         "mutex": "cpp"
-    }
+    },
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.cStandard": "c11",
+    "markdown.preview.fontSize": 16,
+    "editor.fontSize": 16,
+    "C_Cpp.intelliSenseCacheSize": 100
 }

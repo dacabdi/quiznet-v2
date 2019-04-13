@@ -79,8 +79,12 @@ T   := $(T:.cpp=.test)
 A   := $(shell find $(APP)/* -type f -name "*.cpp" -exec basename {} \;)
 A   := $(T:.cpp=.app)
 
+all : clean $(O)
+	@echo "Done!"
+
 clean:
-	rm -rfv $(BIN)
+	@echo " \033[0;33mCleaning up...\033[m"
+	@rm -rf $(BIN)
 
 # all tests
 test: $(T)
@@ -106,15 +110,15 @@ ProfileTest.%: %.test
 	@mkdir -p $(OBJ)/$(base)
 	@$(call compile_and_test, $(CC) $(EXTF) $(CFLAGS) $(I) -c $(src) -o $(OBJ)/$(base)$@, $(COM_STRING))
 
-%.test: %.o $(O)
+%.test: $(O) %.o
 	@test -s $(TST)/$*.cpp || { echo "Test source $(TST)/$*.cpp does not exist!"; exit 1; }
-	@$(eval o := $(foreach fn,$(O) $*.o,$(shell find $(OBJ)/* -type f -name "$(fn)")))
+	@$(eval o := $(foreach fn,$*.o $(O),$(shell find $(OBJ)/* -type f -name "$(fn)")))
 	@mkdir -p $(OUT)/.tests
 	@$(call compile_and_test, $(CC) $(EXTF) $(CFLAGS) $(I) -o $(OUT)/.tests/$*.test $(o), $(LNK_STRING))
 	@chmod +x $(OUT)/.tests/$*.test
 
-%.app: %.o $(O)
+%.app: $(O) %.o 
 	@test -s $(APP)/$*.cpp || { echo "App source '$(APP)/$*.cpp' does not exist!"; exit 1; }
-	@$(eval o := $(foreach fn,$(O) $*.o,$(shell find $(OBJ)/* -type f -name "$(fn)")))
+	@$(eval o := $(foreach fn,$*.o $(O),$(shell find $(OBJ)/* -type f -name "$(fn)")))
 	@$(call compile_and_test, $(CC) $(EXTF) $(CFLAGS) $(I) -o $(OUT)/$*.app $(o), $(LNK_STRING))
 	@chmod +x $(OUT)/$*.app

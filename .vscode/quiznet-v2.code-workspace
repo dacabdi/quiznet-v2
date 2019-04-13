@@ -54,6 +54,10 @@
 			"mutex": "cpp",
 			"cstddef": "cpp",
 			"deque": "cpp"
-		}
+		},
+		"C_Cpp.intelliSenseCacheSize": 100,
+		"cSpell.words": [
+			"funcionalities"
+		]
 	}
 }
