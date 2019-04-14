@@ -20,6 +20,7 @@
 #define LATEJN 10
 #define FAILGT 11
 #define MSGDSL 12
+#define NCKDUP 13
 
 class ProtoError
 {

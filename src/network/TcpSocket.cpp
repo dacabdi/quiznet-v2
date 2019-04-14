@@ -100,7 +100,7 @@ std::string TcpSocket::read(void)
     return msg;
 }
 
-void TcpSocket::Connect(const Host& host) const
+void TcpSocket::Connect(const Host& host)
 {
     if(!host.count())
        throw Except("Host has no addresses to connect to", "TcpSocket::connect()"); 
@@ -118,7 +118,7 @@ void TcpSocket::Connect(const Host& host) const
     throw Except("Failed to connect to '" + failedNames + "'", "TcpSocket::connect()");
 }
 
-void TcpSocket::Bind(const Host& host) const
+void TcpSocket::Bind(const Host& host)
 {
     const struct sockaddr_in addr = host.address();
     int r = bind(_fd, (struct sockaddr *)&addr, sizeof(addr));
@@ -126,29 +126,23 @@ void TcpSocket::Bind(const Host& host) const
 }
 
 // passive binding
-void TcpSocket::Bind(void) const
+void TcpSocket::Bind(void)
 {   
     Host h(nullptr, "0");
     this->Bind(h);
 }
 
-void TcpSocket::Listen(int backlog) const
+void TcpSocket::Listen(int backlog)
 {
     if (listen(_fd, backlog) == -1)
         throw Except("Failed to listen on socket", "TcpSocket::listen()");
 }
 
-TcpSocket TcpSocket::Accept(const size_t timeout) const
+TcpSocket TcpSocket::Accept(void)
 {
     // accept connection
     struct sockaddr_storage address_stg;
     socklen_t address_stg_len = sizeof address_stg;
- 
-    if (timeout)
-        std::thread timeoutThread([&](){
-            std::this_thread::wait_for()
-        });
-
     int cfd = accept(_fd, (struct sockaddr *)&address_stg, &address_stg_len);
 
     if (cfd == -1)
@@ -169,12 +163,8 @@ void TcpSocket::Close(void)
 
 void TcpSocket::Shutdown(void)
 {
-    if(_fd == -1) return;
-    
     if (shutdown(_fd, SHUT_RDWR) != 0)
         throw Except("Failed to shutdown socket", "TcpSocket::shutdown()");
-
-    _fd = -1;
 }
 
 int TcpSocket::fd(void) const

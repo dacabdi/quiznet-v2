@@ -1,7 +1,11 @@
 #include "Player.h"
 
-Player::Player(const std::string nick, TcpSocket& conn)
-: _nick(nick), _conn(conn), _score(0)
+Player::Player(void)
+: _nick(""), _score(0), _ready(false)
+{}
+
+Player::Player(const std::string nick)
+: _nick(nick), _score(0), _ready(false)
 {}
 
 std::string Player::getNick(void) const
@@ -9,9 +13,14 @@ std::string Player::getNick(void) const
     return _nick;
 }
 
-TcpSocket& Player::getConnection(void)
+void Player::setReady(bool ready)
 {
-    return _conn;
+    _ready = ready;
+}
+
+bool Player::isReady(void) const
+{
+    return _ready;
 }
 
 uint32_t Player::getScore(void) const
@@ -23,3 +32,5 @@ uint32_t Player::increaseScore(void)
 {
     return (++_score);
 }
+
+

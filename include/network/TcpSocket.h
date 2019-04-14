@@ -9,11 +9,14 @@
 #include <string>
 #include <sstream>
 #include <thread> // for timed out accept
+#include <condition_variable>
+#include <chrono>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
+
 
 #ifndef __BUFRD
     #define __BUFRD 4096
@@ -44,11 +47,12 @@ class TcpSocket
         std::string read(void);             // read everything
 
         // socket operations (control socket lifecycle)
-        void      Connect(const Host&) const;
-        void      Bind(const Host&) const;
-        void      Bind(void) const; // binds on all ifs on random port
-        void      Listen(int = __DF_BACKLOG) const;
-        TcpSocket Accept(std::chrono::duration<std::chrono::seconds> timeout = std::chrono::seconds(60)) const;
+        void      Connect(const Host&);
+        void      Bind(const Host&);
+        void      Bind(void); // binds on all ifs on random port
+        void      Listen(int = __DF_BACKLOG);
+        TcpSocket Accept(void);
+        TcpSocket AcceptTimeout(void);
         void      Close(void);
         void      Shutdown(void);
         // NOTE: ^ capitalized to avoid collision with same name syscalls

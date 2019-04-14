@@ -50,6 +50,12 @@ std::string Body::content(void) const
     return _content;
 }
 
+std::istringstream Body::contentStream(void) const
+{
+    std::istringstream iss(_content);
+    return iss;
+}
+
 std::string Body::serialize(void) const
 {
     std::ostringstream oss;

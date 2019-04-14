@@ -53,11 +53,17 @@
 			"future": "cpp",
 			"mutex": "cpp",
 			"cstddef": "cpp",
-			"deque": "cpp"
+			"deque": "cpp",
+			"string": "cpp"
 		},
 		"C_Cpp.intelliSenseCacheSize": 100,
 		"cSpell.words": [
-			"funcionalities"
-		]
+			"MSGDSL",
+			"NCKDUP",
+			"funcionalities",
+			"msvc",
+			"nostdinc"
+		],
+		"editor.fontSize": 16
 	}
 }

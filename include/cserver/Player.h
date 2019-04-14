@@ -9,10 +9,12 @@ class Player
 {
     public:
 
-        Player(const std::string nick, TcpSocket& conn);
+        Player();
+        Player(const std::string nick);
 
         std::string getNick(void) const;
-        TcpSocket& getConnection(void);
+        void setReady(bool ready);
+        bool isReady(void) const;
         uint32_t getScore(void) const;
 
         uint32_t increaseScore(void);
@@ -20,8 +22,8 @@ class Player
     protected:
 
         std::string _nick;
-        TcpSocket& _conn;
         uint32_t _score;
+        bool _ready;
 };
 
 #endif // __CONTEST_SESSION_H__

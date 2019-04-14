@@ -123,5 +123,6 @@ const std::map<size_t, ProtoError> ProtoError::Types =
     {CTNFND, ProtoError(CTNFND, "CTNFND", "Contest not found", "")},
     {LATEJN, ProtoError(LATEJN, "LATEJN", "Contest has already started", "")},
     {FAILGT, ProtoError(FAILGT, "FAILGT", "Failed to negotiate session.", "")},
-    {MSGDSL, ProtoError(MSGDSL, "MSGDSL", "Message deserialization error.", "")}
+    {MSGDSL, ProtoError(MSGDSL, "MSGDSL", "Message deserialization error.", "")},
+    {NCKDUP, ProtoError(NCKDUP, "NCKDUP", "Duplicate nickname provided", "")}
 };

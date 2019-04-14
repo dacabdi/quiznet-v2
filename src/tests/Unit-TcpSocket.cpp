@@ -128,12 +128,43 @@ TEST
         s.Bind();
         s.Listen();
 
+        std::mutex m;
+
         std::thread window_signal([&](){
             std::this_thread::sleep_for(std::chrono::seconds(1));
             s.Shutdown();
         });
 
         AssertExcept(s.Accept()); // the exception is expected
+        
+        window_signal.join();
+
+    ENDCASE,
+
+    CASE("shutdownBlockedAcceptingSocketAfterIncoming")
+        
+        // setup
+        TcpSocket s;
+        s.Bind();
+        s.Listen();
+        Host h = s.local();
+
+        std::mutex m;
+
+        std::thread window_signal([&](){
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            s.Shutdown();
+        });
+
+        std::thread incoming_conn([&](){
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            TcpSocket conn;
+            conn.Connect(h);
+        });
+
+        s.Accept(); // the exception is expected
+
+        incoming_conn.join();
         window_signal.join();
 
     ENDCASE

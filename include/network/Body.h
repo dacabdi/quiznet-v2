@@ -19,6 +19,7 @@ class Body
 
         ssize_t length(void) const;
         std::string content(void) const;
+        std::istringstream contentStream(void) const;
         std::string serialize(void) const;
 
         bool operator==(const Body&) const;
