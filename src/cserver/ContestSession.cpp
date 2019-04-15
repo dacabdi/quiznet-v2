@@ -1,32 +1,221 @@
 #include "ContestSession.h"
 
-ContestSession::ContestSession(TcpSocket& sock, std::map<uint32_t, SolvedQuestion>& questions)
-: _sock(sock), _questionsRef(questions), _rounds(0)
-{
-    // socket must be already bound
-    if(!sock.bound())
-        throw Except("Socket not bound", "ContestSession::start()", "", false);
+#include <iostream> //TODO delete this
 
-    std::thread timeout_signal([&](){
-        std::this_thread::sleep_for(std::chrono::seconds(60));
-        _sock.Close();
-    });
+ContestSession::ContestSession(const std::map<uint32_t, SolvedQuestion>& questions)
+: _sock(TcpSocket()), _sq(questions)
+{
+    _sock.Bind();
+    _sock.Listen();
+
+    // init stats
+    _max = 0;
+    for (const auto &q : _sq) 
+        _stats.emplace(q.first, 0.);
+}
+
+void ContestSession::GatherContestants(const size_t seconds)
+{
+    _contestants = _gatherContestants(seconds);
+}
+
+void ContestSession::PlayRound(const uint32_t qId)
+{
+    const SolvedQuestion& sq = _sq.at(qId);
+    std::map<std::string, std::future<bool>> rs; // assoc each player with future round result
+    for (auto &_c : _contestants) rs.emplace(_c.first, std::async([&]() -> bool {
+        Contestant& c = _c.second; // get contestant object
+        try { // wrap for the possibility of the contestant leaving before the end
+            c.Conn.write(Message('u', sq.getQuestion().serialize()).serialize()); // send question
+        } catch (const Except& e) { return false; }
+
+        // try to get response
+        Message res; try             { res = Message(c.Conn.read()); } // if contestant...
+        catch (const Except& e)      { return false; }                 // ... drops dead ... 
+        catch (const ProtoExcept& e) { return false; }                 // ... or provides malformed answer ... 
+                                                                       // ... it will cause the contestant to lose the round
+        // not the right type of message or format, also lost
+        if(res.type() != 'u' || res.body().content().size() != 1) return false; 
+        
+        char answer = res.body().content().at(0);   // get the answer from the response
+        return sq.getSolution() == answer;          // return result
+    }));
+
+    // wait for async tasks and do stats
+    uint32_t correct = 0;
+    for (auto &cRes : rs) 
+    { 
+        cRes.second.wait();              // wait for score to be ready
+        if(cRes.second.get()) correct++; // and increase stats for question if correct
+    } _stats[qId] = correct;
+    
+    // do bookkeeping and tell contestants
+    double ratio = (double)correct / (double)_contestants.size();
+
+    for (auto &cRes : rs)
+    {
+        Contestant &c = _contestants.at(cRes.first);
+        std::string res;
+
+        // account and prepare response
+        if(cRes.second.get()) 
+        {
+            _max = std::max(c.increaseScore(), _max);
+            res = "correct\n";
+        } 
+        else 
+            res = "incorrect\n";
+
+        // append
+        //      1. round's correct ratio
+        //      2. number of questions
+        //      3. contestant's score
+        //      4. max score so far
+        
+        res.append(std::to_string(ratio) + "\n");
+        res.append(std::to_string(_sq.size()) + "\n");
+        res.append(std::to_string(c.getScore()) + "\n");
+        res.append(std::to_string(_max) + "\n");
+
+        try { c.Conn.write(Message('o', res).serialize()); } 
+        catch(const Except& e) {} // < ignore communication problems with the contestant
+    }
+}
+
+TcpSocket& ContestSession::getSocket(void)
+{
+    return _sock;
+}
+
+std::vector<std::string> ContestSession::getNames(void) const
+{
+    std::vector<std::string> names;
+
+    for (const auto & name : _contestants)
+        names.push_back(name.first);
+    
+    return names;
+}
+
+const std::map<std::string, Contestant>& ContestSession::getContestants(void) const
+{
+    return _contestants;
+}
+
+const std::map<uint32_t, uint32_t>& ContestSession::getStats(void) const
+{
+    return _stats;
+}
+
+uint32_t ContestSession::getStats(const uint32_t qId) const
+{
+    if(!_stats.count(qId))
+        throw Except("Question stats do not exist", "ContestSession::getStats()", 
+                     "Id provided" + std::to_string(qId), false);
+    
+    return _stats.at(qId);
+}
+
+std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_t seconds)
+{
+    std::vector<std::thread> ths;
+    std::map<std::string, Contestant> contestants;
 
     bool timeout = false;
+    std::thread timeout_signal([&](){
+        std::this_thread::sleep_for(std::chrono::seconds(seconds));
+        _sock.Shutdown();
+    });
+
     while(!timeout)
     {
         try {
-            playerThread(_sock.Accept());
+            // wait for connection
+            TcpSocket cs = _sock.Accept();
+            // negotiate session with the contestant
+            ths.push_back(std::thread([&](TcpSocket cs) {
+                while(true)
+                {
+                    Message req;
+                    
+                    // try to read request
+                    try {
+                        std::string msg = cs.read();
+                        if (msg == "") break; // likely client dropped (socket gets closed by scope)
+                        req = Message(msg); // deserialize request
+                    } catch (const ProtoExcept& e) { // protocol errors, send error response
+                        cs.write(Message('e', e.Error.serialize()).serialize());
+                        continue;
+                    } catch (const Except& e) { // network errors, disregard client
+                        break;
+                    }
+
+                    // try to send response
+                    try {
+                        // check request type
+                        if(req.type() != 'n')
+                        {
+                            cs.write(Message('e', ProtoError(FAILGT, "Unexpected request type").serialize()).serialize());
+                            continue;
+                        }
+
+                        // get a stream to the content
+                        std::istringstream iss = req.body().contentStream();
+                        std::string clientType; 
+                        std::getline(iss, clientType); 
+
+                        // check that client type is "contestant"
+                        if (clientType != "contestant")
+                        {
+                            cs.write(Message('e', ProtoError(FAILGT, "Unexpected client type: " + clientType).serialize()).serialize());
+                            continue;
+                        }
+                            
+                        std::string nickName;
+                        std::getline(iss, nickName);
+
+                        if(nickName == "")
+                        {
+                            cs.write(Message('e', ProtoError(FAILGT, "Empty contestant nickname").serialize()).serialize());
+                            continue;
+                        }
+
+                        { // check nicknames for duplicates
+                            std::unique_lock<std::mutex> l(_mutex);
+                            if(contestants.count(nickName) == 0)
+                            {
+                                cs.write(Message('o', Body("")).serialize());
+                                contestants.emplace(nickName, Contestant(nickName, std::move(cs)));
+                                break;
+                            }
+                        } // end check
+                        cs.write(Message('e', ProtoError(NCKDUP, nickName).serialize()).serialize());
+                    } catch (const Except& e) { // network errors, disregard client
+                        break;
+                    }
+                }
+            }, std::move(cs)));
         } catch(const Except& e) {
-            if(e.Errno == EINVAL) timeout = true;
+            if     (e.Errno == EINVAL)     timeout = true;
+            else if(e.Errno == ECONNRESET) continue; // client dropped dead
             else throw e;
         }
     }
 
-    timeout_signal.join();
+    if(timeout_signal.joinable()) timeout_signal.join();
+
+    // join all negotiating threads
+    for (auto &th : ths)
+        if(th.joinable())
+            th.join();
+
+    return contestants;
 }
 
-void ContestSession::playerThread(TcpSocket conn)
+
+
+
+/*void ContestSession::playerThread(TcpSocket conn)
 {
     ProtoError e;
     Message msg;
@@ -42,7 +231,7 @@ void ContestSession::playerThread(TcpSocket conn)
         msg = Message(conn.read());
         
         reqType = msg.type();
-        std::istringstream iss = msg.body.content();
+        std::istringstream iss = msg.body().contentStream();
 
         iss >> clientType;
         iss >> nickname;
@@ -82,7 +271,7 @@ void ContestSession::playerThread(TcpSocket conn)
 
         // read response
         msg = Message(conn.read());
-        char playerChoice = msg.body.content().at[0];
+        char playerChoice = msg.body().content().at(0);
 
         std::string rBody;
         if(q.second.getSolution() == playerChoice) {
@@ -101,11 +290,9 @@ void ContestSession::playerThread(TcpSocket conn)
                 _maxScore = contestant.getScore();
         }
         
-        
+        rBody += std::to_string(_maxScore);
+        conn.write(Message('o', rBody).serialize());
     }
-    
-        waitOnPlayers();
-        // wait for all players...
     
 }
 
@@ -120,4 +307,4 @@ void ContestSession::waitOnPlayers(void)
                 roundReady = false;
     }
     // TODO ^ : use conditional variables instead of a spin-lock
-}
+}*/

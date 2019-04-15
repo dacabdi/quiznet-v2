@@ -167,6 +167,43 @@ TEST
         incoming_conn.join();
         window_signal.join();
 
+    ENDCASE,
+
+    CASE("moveConstructorSocket")
+        // setup
+        TcpSocket s(TcpSocket());
+
+        // no exception will be thrown trying to close the 
+        // socket twice...
+
+    ENDCASE,
+
+    CASE("moveAssignOperatorSocket")
+        // setup
+        TcpSocket s1;
+        int s1_fd = s1.fd();
+
+        TcpSocket s2;
+        int s2_fd = s2.fd();
+
+        s1 = std::move(s2);
+
+        // assert
+        AssertEqual(s1.fd(), s2_fd);
+        AssertEqual(s2.fd(), s1_fd);
+
+    ENDCASE,
+
+    CASE("moveConstructorSocketObj")
+        // setup
+        TcpSocket s1;
+        int s1_fd = s1.fd();
+        TcpSocket s2(std::move(s1));
+
+        // assert
+        AssertEqual(s1.fd(), -1);
+        AssertEqual(s2.fd(), s1_fd);
+
     ENDCASE
 
 ENDTEST

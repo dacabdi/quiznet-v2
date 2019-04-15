@@ -43,7 +43,7 @@
             "description": "Select a test",
             "default": "none",
             "type": "pickString",
-            "options": ["Unit-Message", "Unit-Body", "Unit-Host", "Unit-TcpSocket", "Funct-TcpSocket"]
+            "options": ["Funct-ContestSession", "Unit-Message", "Unit-Body", "Unit-Host", "Unit-TcpSocket", "Funct-TcpSocket"]
         }
     ],
 }

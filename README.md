@@ -356,7 +356,7 @@ Expect an error `CTNFND` indicating that the contest was not found if the contes
 
 ##### GENERAL MESSAGE #####
 
-Used for general non-specific communication. Mainly for the contestant to participate of a contest.
+Used for general non-specific communication. Since a contest participation has a predetermined flow, this kind of message will be used mainly for the contestant to participate in a contest.
 
 ```plain-text
 u length\n

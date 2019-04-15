@@ -3,12 +3,13 @@
 
 #include "SolvedQuestion.h"
 #include "TcpSocket.h"
-#include "Player.h"
+#include "Contestant.h"
 #include "Message.h"
 
 #include <map>
 #include <mutex>
 #include <thread>
+#include <future>
 #include <sstream>
 
 /*
@@ -25,22 +26,28 @@ class ContestSession
 {
     public:
 
-        ContestSession(TcpSocket& sock, std::map<uint32_t, SolvedQuestion>&);
-
+        ContestSession(const std::map<uint32_t, SolvedQuestion>&);
+        
+        void GatherContestants(const size_t seconds = 60);
+        void PlayRound(const uint32_t qId);
+        
+        TcpSocket& getSocket(void);
+        std::vector<std::string> getNames(void) const;
+        const std::map<std::string, Contestant>& getContestants(void) const;
+        const std::map<uint32_t, uint32_t>& getStats(void) const;
+        uint32_t getStats(const uint32_t qId) const;
+        
+        
     protected:
 
-        TcpSocket& _sock;
-        std::map<uint32_t, SolvedQuestion>& _questionsRef;
-        size_t _rounds;
-        bool _ready;
-        uint32_t _roundCorrect = 0;
-        uint32_t _maxScore = 0;
-
-        std::map<std::string, &Player> _players;
-        std::mutex _mutex;
-
-        void playerThread(TcpSocket conn);
-        void waitOnPlayers(void);
+        TcpSocket                                 _sock;    // contest socket
+        const std::map<uint32_t, SolvedQuestion>& _sq;      // question set reference
+        std::map<uint32_t, uint32_t>              _stats;   // questions statistics
+        std::map<std::string, Contestant>         _contestants; std::mutex _mutex;
+        uint32_t _max = 0;
+        
+        // workflow methods
+        std::map<std::string, Contestant> _gatherContestants(const size_t seconds);
 };
 
 #endif // __CONTEST_SESSION_H__

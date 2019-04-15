@@ -27,15 +27,25 @@
 #endif
 
 #ifndef __DF_BACKLOG
-    #define __DF_BACKLOG 5
+    #define __DF_BACKLOG 10
 #endif
 
 class TcpSocket
 {
     public :
 
-        // socket default constructor
-        TcpSocket(void);
+        TcpSocket(void); // socket default constructor
+        
+        // disallow copy and copy assignment operator
+        TcpSocket(const TcpSocket&)            = delete;
+        TcpSocket& operator=(const TcpSocket&) = delete;
+        
+        // allow move and move-assign
+        TcpSocket(TcpSocket&& other);      // move constructor
+        TcpSocket& operator=(TcpSocket&&); // move assignment
+        
+        // swap function
+        friend void swap(TcpSocket& a, TcpSocket& b); // nothrow
 
         // write
         ssize_t write(const std::string&); // from a string

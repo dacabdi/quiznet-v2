@@ -13,6 +13,28 @@ TcpSocket::TcpSocket(void)
     _fd = fd;
 }
 
+// move constructor
+TcpSocket::TcpSocket(TcpSocket&& other)
+: TcpSocket(-1)
+{
+    swap(*this, other);
+}
+
+// assignment operator
+TcpSocket &TcpSocket::operator=(TcpSocket&& other)
+{
+    if(this != &other)
+        swap(*this, other);
+    
+    return *this;
+}
+
+void swap(TcpSocket& a, TcpSocket& b) // nothrow
+{
+    using std::swap; // enable ADL
+    swap(a._fd, b._fd);
+}
+
 ssize_t TcpSocket::write(const std::string& s)
 {
     ssize_t w = send(_fd, s.c_str(), s.size(), 0);
