@@ -54,9 +54,7 @@ std::string QuestionTitle::deserialize(std::istream& is)
     // if the first line is '.', no question, malformed message? TODO ASK!
     std::getline(is, line);
     if(line == ".")
-        throw std::invalid_argument(
-            "QuestionTitle::deserialize():"
-            "Empty question title."); 
+        throw Except("Failed to deserialize question title", ___WHERE, "Empty question title", false);
     
     title.append(line);
     std::getline(is, line);
@@ -75,9 +73,7 @@ std::string QuestionTitle::deserialize(const std::string& str)
 {
     size_t pos = str.find("\n.\n");
     if(pos == std::string::npos)
-        throw std::invalid_argument(
-            "QuestionTitle::deserialize():"
-            "Title format does not end on \\n.\\n");
+        throw Except("Failed to deserialize question title", ___WHERE, "Title format does not end on '\\n.\\n', provided title: " + str, false);
 
     return str.substr(0, pos);
 }

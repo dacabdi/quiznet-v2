@@ -54,16 +54,21 @@
 			"mutex": "cpp",
 			"cstddef": "cpp",
 			"deque": "cpp",
-			"string": "cpp"
+			"string": "cpp",
+			"cstdarg": "cpp",
+			"cinttypes": "cpp"
 		},
 		"C_Cpp.intelliSenseCacheSize": 100,
 		"cSpell.words": [
+			"Intelli",
 			"MSGDSL",
 			"NCKDUP",
 			"cthreads",
 			"funcionalities",
 			"msvc",
-			"nostdinc"
+			"nostdinc",
+			"uset",
+			"workspace's"
 		],
 		"editor.fontSize": 16
 	}

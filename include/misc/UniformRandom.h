@@ -1,6 +1,8 @@
 #ifndef __UNIFORMRANDOM__H__
 #define __UNIFORMRANDOM__H__
 
+#include "Common.h"
+
 #include <random>
 #include <limits>
 

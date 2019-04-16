@@ -2,6 +2,7 @@
 #define __CONTESTANT_H__
 
 #include "TcpSocket.h"
+#include "Common.h"
 
 #include <string>
 

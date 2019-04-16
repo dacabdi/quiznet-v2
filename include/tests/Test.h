@@ -4,6 +4,7 @@
 #include "Except.h"
 #include "ProtoExcept.h"
 #include "Utils.h"
+#include "Common.h"
 
 #include <iostream>
 #include <ostream>
@@ -26,30 +27,49 @@
 // TODO: use a singleton for all these, make atomic
 std::ostringstream ____report;
 std::mutex ____report_mutex;
+int ____line = 0;
+std::string ____file  = "";
+std::string ____arg_a = "";
+std::string ____arg_b = "";
 
 // TODO: macro overloading
 
-#define AssertEqual(a, b) __r__ = assertEqual(a, b) && __r__;
-#define AssertNotEqual(a, b) __r__ = assertNotEqual(a, b) && __r__;
+#define AssertEqual(a, b) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertEqual(a, b) && __r__;}
+#define AssertNotEqual(a, b) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__= assertNotEqual(a, b) && __r__;}
 
-#define AssertEqualComp(a, b, comp) __r__ = assertEqual(a, b, comp) && __r__;
-#define AssertNotEqualComp(a, b, comp) __r__ = assertNotEqual(a, b, comp) && __r__;
+#define AssertEqualComp(a, b, comp) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertEqual(a, b, comp) && __r__;}
+#define AssertNotEqualComp(a, b, comp) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertNotEqual(a, b, comp) && __r__};
 
-#define AssertEqualCompPrint(a, b, comp, print) __r__ = assertEqual(a, b, comp, print) && __r__;
-#define AssertNotEqualCompPrint(a, b, comp, print) __r__ = assertNotEqual(a, b, comp, print) && __r__;
+#define AssertEqualCompPrint(a, b, comp, print) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertEqual(a, b, comp, print) && __r__};
+#define AssertNotEqualCompPrint(a, b, comp, print) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertNotEqual(a, b, comp, print) && __r__};
 
-#define assertExcept(operation, __r__var__) \
-try {\
-    operation;\
+#define assertExcept(operation, __r__var__) { try {____line = __LINE__; ____file = __FILE__;  operation;\
     __r__var__ = false;\
     std::unique_lock<std::mutex> l(____report_mutex);\
-    ____report << __RED__ << "[assertExcept Failed] on operation '" \
-               << #operation << "'" << __RESET__ << "\n";\
+    ____report << __RED__ << "[assertExcept Failed]\n" << __CYN__  \
+               << "on operation: '" << #operation << "'\n" \
+               << "at: '" << ____file << ":" << ____line << "'\n" \
+               << __RESET__ << "\n";\
     l.unlock();\
 } catch(...) {\
     __r__var__ = __r__var__ && true;\
-}
+}}
+
 #define AssertExcept(operation) assertExcept(operation, __r__)
+
+#define assertNotExcept(operation, __r__var__) { try {____line = __LINE__; ____file = __FILE__;  operation;\
+    __r__var__ = __r__var__ && true;\
+} catch(const std::exception& e) {\
+    __r__var__ = false;\
+    std::unique_lock<std::mutex> l(____report_mutex);\
+    ____report << __RED__ << "[assertNotExcept Failed]\n" << __CYN__  \
+               << "on operation: '" << #operation << "'\n" \
+               << "at: '" << ____file << ":" << ____line << "'\n" \
+               << __RESET__ << "\n";\
+    l.unlock();\
+}}
+
+#define AssertNotExcept(operation) assertNotExcept(operation, __r__)
 
 #define RUNTEST int main(){ return (runTestSuite(tests) ? EXIT_SUCCESS : EXIT_FAILURE); }
 #define TEST std::map<const std::string, std::function<bool (void)>> tests = {
@@ -94,7 +114,10 @@ void reportAssertEqualFailed(T& actual, T& expected,
 {
     std::unique_lock<std::mutex> l(____report_mutex);
 
-    ____report << __RED__ << "[assertEqual Failed]" << __RESET__ << "\n";
+    ____report << __RED__ << "[assertEqual Failed]\n" << __CYN__
+               << "at: '" << ____file << ":" << ____line << "'" << std::endl
+               << "with arguments: " << ____arg_a << "," << ____arg_b
+               << __RESET__ << "\n";
 
     ____report << __GRN__ << "expected : ";
     printer(____report, expected) << "\n";
@@ -127,7 +150,7 @@ bool assertEqual
     return false;
 }
 
-// char array
+// string (required to scape)
 bool assertEqual(const std::string& actual, const std::string& expected, const bool escape = true)
 {
     return assertEqual<std::string>(
@@ -181,13 +204,44 @@ bool assertEqual(std::vector<E>& actual,
         });
 }
 
+// map
+template<typename K, typename V>
+bool assertEqual(const std::map<K,V>& actual, 
+                 const std::map<K,V>& expected)
+{
+    return assertEqual<const std::map<K,V>>(actual, expected, 
+        [](const std::map<K,V>& a, const std::map<K,V>& b) -> bool {
+            return utils::mapsEqual(a, b);
+        },
+        [](std::ostream& os, const std::map<K,V>& m) -> std::ostream& { 
+            os << std::endl;
+            for (const auto & s : m)
+                os << s.first << ":" << s.second << std::endl;
+            return os;
+        });
+}
+
+// double
+bool assertEqual(const double& actual, 
+                 const double& expected)
+{
+    // TODO: pass down ulp
+    return assertEqual<const double>(actual, expected, 
+        [](const double& a, const double& b) -> bool {
+            return utils::almost_equal(a, b);
+        });
+}
+
 // report not equal failed
 template<typename T> 
 void reportAssertNotEqualFailed(T& a, T& b, 
     std::ostream& printer(std::ostream&, T&))
 {
     std::unique_lock<std::mutex> l(____report_mutex);
-    ____report << __RED__ << "[assertNotEqual Failed]" << __RESET__ << "\n";
+    ____report << __RED__ << "[assertNotEqual Failed]\n" << __CYN__
+               << "at: '" << ____file << ":" << ____line << "'" << std::endl
+               << "with arguments: " << ____arg_a << "," << ____arg_b
+               << __RESET__ << "\n";
 
     ____report << __GRN__ << "a : ";
     printer(____report, a) << "\n";

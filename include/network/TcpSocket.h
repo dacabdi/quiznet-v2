@@ -3,6 +3,7 @@
 
 #include "Except.h"
 #include "Host.h"
+#include "Common.h"
 
 #include <istream>
 #include <ostream>

@@ -3,6 +3,7 @@
 
 //#include "ProtoExcept.h"
 #include "Body.h"
+#include "Common.h"
 
 #include <string>
 

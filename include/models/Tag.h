@@ -1,6 +1,8 @@
 #ifndef __TAG__H__
 #define __TAG__H__
 
+#include "Common.h"
+
 #include <string>
 #include <ostream>
 

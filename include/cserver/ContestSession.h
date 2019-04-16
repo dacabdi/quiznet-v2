@@ -5,6 +5,9 @@
 #include "TcpSocket.h"
 #include "Contestant.h"
 #include "Message.h"
+#include "RoundResults.h"
+#include "ContestStats.h"
+#include "Common.h"
 
 #include <map>
 #include <mutex>
@@ -22,32 +25,50 @@
     Once the contest is over, the session will terminate. 
 */
 
+using contestants_set = std::map<std::string, Contestant>;
+using questions_set   = std::map<uint32_t, SolvedQuestion>;
+using scores_set      = std::map<uint32_t, uint32_t>;
+
+enum ContestState 
+{
+    INVALID = 0,   // socket not binded and uninitialized
+    READY = 1,     // socket bound and all data cleared
+    STARTING = 2,  // contest announced, accepting and gathering contestants
+    RUNNING = 3,   // contestant's gathered, can run rounds
+    TERMINATED = 4 // contest was called off for all contestants
+};
+
 class ContestSession
 {
     public:
 
-        ContestSession(const std::map<uint32_t, SolvedQuestion>&);
+        ContestSession(const questions_set&);
         
-        void GatherContestants(const size_t seconds = 60);
+        void StartSession(const size_t seconds = 60);
         void PlayRound(const uint32_t qId);
-        
+        void TerminateSession(void);
+
         TcpSocket& getSocket(void);
+        
         std::vector<std::string> getNames(void) const;
-        const std::map<std::string, Contestant>& getContestants(void) const;
-        const std::map<uint32_t, uint32_t>& getStats(void) const;
-        uint32_t getStats(const uint32_t qId) const;
+        const contestants_set& getContestants(void) const;
         
+        ContestStats getStats(void) const;
         
+        ContestState getState(void);
+
     protected:
 
-        TcpSocket                                 _sock;    // contest socket
-        const std::map<uint32_t, SolvedQuestion>& _sq;      // question set reference
-        std::map<uint32_t, uint32_t>              _stats;   // questions statistics
-        std::map<std::string, Contestant>         _contestants; std::mutex _mutex;
-        uint32_t _max = 0;
-        
-        // workflow methods
-        std::map<std::string, Contestant> _gatherContestants(const size_t seconds);
+        TcpSocket             _sock;    // contest socket
+        const questions_set & _sq;      // question set reference
+        scores_set            _stats;   // questions statistics
+        contestants_set       _contestants; std::mutex _contestants_mutex;
+        uint32_t              _max = 0; // max score
+
+        ContestState _state; std::mutex _state_mutex;
+
+        // internal helpers
+        contestants_set _gatherContestants(const size_t seconds);
 };
 
 #endif // __CONTEST_SESSION_H__

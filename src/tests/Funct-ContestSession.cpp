@@ -1,5 +1,7 @@
 #include "Test.h"
 #include "Utils.h"
+#include "Question.h"
+#include "RoundResults.h"
 #include "ContestSession.h"
 
 #include <algorithm>
@@ -39,7 +41,7 @@ uint32_t q5_Id = 89;
 
 TEST
 
-    CASE("sessionlisteningAndInitSocket")
+    /*CASE("sessionlisteningAndInitSocket")
         // data setup
         std::map<uint32_t, SolvedQuestion> qs;
         qs.emplace(q1_Id, q1);
@@ -77,7 +79,7 @@ TEST
                 hostReady = true;
             } cv.notify_all(); // session host is ready
             
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             std::vector<std::string> namesRead = cs.getNames();
 
             AssertEqual(namesRead.size(), (size_t)1);
@@ -142,7 +144,7 @@ TEST
                 hostReady = true;
             } cv.notify_all(); // session host is ready
             
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             std::vector<std::string> namesRead = cs.getNames();
 
             AssertEqual(namesRead.size(), (size_t)0);
@@ -193,7 +195,7 @@ TEST
                 hostReady = true;
             } cv.notify_all(); // session host is ready
             
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             std::vector<std::string> namesRead = cs.getNames();
 
             AssertEqual(namesRead.size(), (size_t)2);
@@ -266,7 +268,7 @@ TEST
                 hostReady = true;
             } cv.notify_all(); // session is ready
 
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             std::vector<std::string> namesRead = cs.getNames();
 
             // couple names
@@ -335,7 +337,7 @@ TEST
 
         std::thread cs([&](){
             ContestSession cs(qs);
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             AssertEqual(cs.getNames().size(), (size_t)0);
         });
 
@@ -370,7 +372,7 @@ TEST
                 hostReady = true;
             } cv.notify_all(); // session host is ready
             
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             std::vector<std::string> namesRead = cs.getNames();
 
             AssertEqual(namesRead.size(), (size_t)1);
@@ -429,7 +431,7 @@ TEST
                 hostReady = true;
             } cv.notify_all();
 
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             std::vector<std::string> namesRead = cs.getNames();
             
             std::sort(names.begin(), names.end());
@@ -485,7 +487,7 @@ TEST
                 
             }
             cv.notify_all();
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             AssertEqual(cs.getNames().size(), (size_t)0); // zero contestants read
         });
 
@@ -539,7 +541,7 @@ TEST
             } cv.notify_all();
 
             // start accepting contestants for 'timeout' seconds
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             
             // no contestant should have gathered
             AssertEqual(cs.getNames().size(), (size_t)0);
@@ -598,7 +600,7 @@ TEST
             } cv.notify_all();
 
             // start accepting contestants for 'timeout' seconds
-            cs.GatherContestants(timeout);
+            cs.StartSession(timeout);
             
             // no contestant should have gathered
             AssertEqual(cs.getNames().size(), (size_t)0);
@@ -624,8 +626,347 @@ TEST
         if (ct.joinable()) ct.join();
         if (cs.joinable()) cs.join();
 
-    ENDCASE
+    ENDCASE,*/
 
+    CASE("playRound_oneContestantOneRound")
+        // SUMMARY
+        //      GIVEN A contest session on any given port with one question
+        //      WHEN  Join one contestant before timeout
+        //      THEN  The contestant can play for a round
+
+        std::map<uint32_t, SolvedQuestion> qs;
+        qs.emplace(q1_Id, q1);   
+        
+        size_t timeout = 2;
+
+        std::mutex host_mutex;
+        std::condition_variable cv;
+        bool hostReady = false;
+        Host sessionHost;
+
+        std::string nickname = "johndoe";
+
+        std::thread cs([&](){
+            ContestSession cs(qs);
+            { // announce host ready
+                std::unique_lock<std::mutex> l(host_mutex);
+                sessionHost = cs.getSocket().local();
+                hostReady = true;
+            } cv.notify_all(); // session host is ready
+            
+            AssertEqual(cs.getState(), READY);
+            cs.StartSession(timeout);
+            AssertEqual(cs.getState(), RUNNING);
+
+            std::vector<std::string> namesRead = cs.getNames();
+            AssertEqual(namesRead.size(), (size_t)1);
+            AssertEqual(namesRead.at(0), nickname);
+
+            cs.PlayRound(q1_Id);
+            cs.TerminateSession();
+
+            AssertEqual(cs.getState(), TERMINATED);
+
+            ContestStats stats = cs.getStats();
+            AssertEqual(stats.average(), (double)1.0);
+            AssertEqual(stats.contestants(), (uint32_t)1);
+            AssertEqual((uint32_t)stats.questions(), (uint32_t)1);
+            AssertEqual(stats.max(), (uint32_t)1);
+        });
+
+        std::thread ct([&](){
+            { // wait for host to be ready
+                std::unique_lock<std::mutex> l(host_mutex);
+                while (!hostReady) cv.wait(l);
+            } // host is ready
+
+            TcpSocket conn;
+            conn.Connect(sessionHost);
+            conn.write(Message('n', Body("contestant\n" + nickname + "\n")).serialize());
+            Message res(conn.read());
+            
+            AssertEqual(res.type(), 'o'); // the response should be OK
+
+            // logged in ... now wait for question
+
+            // round 1 (indented for clarity)
+                Message r1_q_msg(conn.read());
+                AssertEqual(r1_q_msg.type(), 'u');
+
+                Question r1_q(r1_q_msg.body().content());
+                AssertEqual(r1_q, q1.getQuestion());
+
+                // send response
+                conn.write(Message('u', std::string(1, q1.getSolution())).serialize());
+                
+                // read result
+                Message r1_r_msg(conn.read());
+                AssertEqual(r1_r_msg.type(), 'u');
+                
+                // round results
+                RoundResults r1_r_rr;
+                AssertNotExcept(r1_r_rr = RoundResults::deserialize(r1_r_msg.body().content()));
+                AssertEqual(r1_r_rr.correct(), true);
+                AssertEqual(r1_r_rr.ratio(), 1.);
+                AssertEqual(r1_r_rr.questions(), (uint32_t)1);
+                AssertEqual(r1_r_rr.score(), (uint32_t)1);
+                AssertEqual(r1_r_rr.max(), (uint32_t)1);
+
+            // wait for termination message or next question (in this case, termination)
+                Message t_msg(conn.read());
+                AssertEqual(t_msg.type(), 't');
+        });
+
+        // join all threads
+        if (ct.joinable()) ct.join();
+        if (cs.joinable()) cs.join();
+
+    ENDCASE,
+
+    CASE("playRound_oneContestantFiveRounds")
+        // SUMMARY
+        //      GIVEN A contest session on any given port with five questions
+        //      WHEN  Join one contestant before timeout
+        //      THEN  The contestant can play for five rounds round
+
+        std::map<uint32_t, SolvedQuestion> qs;
+        qs.emplace(q1_Id, q1);
+        qs.emplace(q2_Id, q2);
+        qs.emplace(q3_Id, q3);
+        
+        size_t timeout = 2;
+
+        std::mutex host_mutex;
+        std::condition_variable cv;
+        bool hostReady = false;
+        Host sessionHost;
+
+        std::string nickname = "johndoe";
+
+        std::thread cs([&](){
+            ContestSession cs(qs);
+            { // announce host ready
+                std::unique_lock<std::mutex> l(host_mutex);
+                sessionHost = cs.getSocket().local();
+                hostReady = true;
+            } cv.notify_all(); // session host is ready
+            
+            AssertEqual(cs.getState(), READY);
+            cs.StartSession(timeout);
+            AssertEqual(cs.getState(), RUNNING);
+
+            std::vector<std::string> namesRead = cs.getNames();
+            AssertEqual(namesRead.size(), (size_t)1);
+            AssertEqual(namesRead.at(0), nickname);
+
+            cs.PlayRound(q1_Id);
+            cs.PlayRound(q2_Id);
+            cs.PlayRound(q3_Id);
+
+            cs.TerminateSession();
+
+            AssertEqual(cs.getState(), TERMINATED);
+
+            ContestStats stats = cs.getStats();
+            AssertEqual(stats.average(), (double)2/(double)3);
+            AssertEqual(stats.contestants(), (uint32_t)1);
+            AssertEqual((uint32_t)stats.questions(), (uint32_t)3);
+            AssertEqual(stats.max(), (uint32_t)1);
+            AssertEqual(stats.highest(), (uint32_t)2);
+        });
+
+        std::thread ct([&](){
+            { // wait for host to be ready
+                std::unique_lock<std::mutex> l(host_mutex);
+                while (!hostReady) cv.wait(l);
+            } // host is ready
+
+            TcpSocket conn;
+            conn.Connect(sessionHost);
+            conn.write(Message('n', Body("contestant\n" + nickname + "\n")).serialize());
+            Message res(conn.read());
+            
+            AssertEqual(res.type(), 'o'); // the response should be OK
+
+            // logged in ... now wait for question
+
+            // round 1 (indented for clarity)
+                Message r1_q_msg(conn.read());
+                AssertEqual(r1_q_msg.type(), 'u');
+
+                Question r1_q(r1_q_msg.body().content());
+                AssertEqual(r1_q, q1.getQuestion());
+
+                // send response
+                conn.write(Message('u', std::string(1, q1.getSolution())).serialize());
+                
+                // read result
+                Message r1_r_msg(conn.read());
+                AssertEqual(r1_r_msg.type(), 'u');
+                
+                // round results
+                RoundResults r1_r_rr;
+                AssertNotExcept(r1_r_rr = RoundResults::deserialize(r1_r_msg.body().content()));
+                AssertEqual(r1_r_rr.correct(), true);
+                AssertEqual(r1_r_rr.ratio(), 1.);
+                AssertEqual(r1_r_rr.questions(), (uint32_t)3);
+                AssertEqual(r1_r_rr.score(), (uint32_t)1);
+                AssertEqual(r1_r_rr.max(), (uint32_t)1);
+
+            // round 2 (indented for clarity)
+                Message r2_q_msg(conn.read());
+                AssertEqual(r2_q_msg.type(), 'u');
+
+                Question r2_q(r2_q_msg.body().content());
+                AssertEqual(r2_q, q2.getQuestion());
+
+                // send response
+                conn.write(Message('u', std::string(1, q2.getSolution())).serialize());
+                
+                // read result
+                Message r2_r_msg(conn.read());
+                AssertEqual(r2_r_msg.type(), 'u');
+                
+                // round results
+                RoundResults r2_r_rr;
+                AssertNotExcept(r2_r_rr = RoundResults::deserialize(r2_r_msg.body().content()));
+                AssertEqual(r2_r_rr.correct(), true);
+                AssertEqual(r2_r_rr.ratio(), 1.);
+                AssertEqual(r2_r_rr.questions(), (uint32_t)3);
+                AssertEqual(r2_r_rr.score(), (uint32_t)2);
+                AssertEqual(r2_r_rr.max(), (uint32_t)2);
+
+            // round 3 (indented for clarity)
+                Message r3_q_msg(conn.read());
+                AssertEqual(r3_q_msg.type(), 'u');
+
+                Question r3_q(r3_q_msg.body().content());
+                AssertEqual(r3_q, q3.getQuestion());
+
+                // send response
+                conn.write(Message('u', std::string(1, (char)(q3.getSolution()+1))).serialize());
+                
+                // read result
+                Message r3_r_msg(conn.read());
+                AssertEqual(r3_r_msg.type(), 'u');
+                
+                // round results
+                RoundResults r3_r_rr;
+                AssertNotExcept(r3_r_rr = RoundResults::deserialize(r3_r_msg.body().content()));
+                AssertEqual(r3_r_rr.correct(), false);
+                AssertEqual(r3_r_rr.ratio(), .0); // nobody got it right in this round
+                AssertEqual(r3_r_rr.questions(), (uint32_t)3);
+                AssertEqual(r3_r_rr.score(), (uint32_t)2);
+                AssertEqual(r3_r_rr.max(), (uint32_t)2);
+
+            // wait for termination message or next question (in this case, termination)
+                Message t_msg(conn.read());
+                AssertEqual(t_msg.type(), 't');
+        });
+
+        // join all threads
+        if (ct.joinable()) ct.join();
+        if (cs.joinable()) cs.join();
+
+    ENDCASE
+/*
+    CASE("playRound_threeContestant")
+        // SUMMARY
+        //      GIVEN A contest session on any given port with one question
+        //      WHEN  Join one contestant before timeout
+        //      THEN  The contestant can play for a round
+
+        std::map<uint32_t, SolvedQuestion> qs;
+        qs.emplace(q1_Id, q1);
+        qs.emplace(q2_Id, q2);
+        qs.emplace()
+
+        size_t timeout = 2;
+
+        std::mutex host_mutex;
+        std::condition_variable cv;
+        bool hostReady = false;
+        Host sessionHost;
+
+        std::string nickname = "johndoe";
+
+        std::thread cs([&](){
+            ContestSession cs(qs);
+            { // announce host ready
+                std::unique_lock<std::mutex> l(host_mutex);
+                sessionHost = cs.getSocket().local();
+                hostReady = true;
+            } cv.notify_all(); // session host is ready
+            
+            AssertEqual(cs.getState(), READY);
+            cs.StartSession(timeout);
+            AssertEqual(cs.getState(), RUNNING);
+
+            std::vector<std::string> namesRead = cs.getNames();
+            AssertEqual(namesRead.size(), (size_t)1);
+            AssertEqual(namesRead.at(0), nickname);
+
+            cs.PlayRound(q1_Id);
+            cs.TerminateSession();
+
+            AssertEqual(cs.getState(), TERMINATED);
+
+            ContestStats stats = cs.getStats();
+            AssertEqual(stats.average(), (double)1.0);
+            AssertEqual(stats.contestants(), (uint32_t)1);
+            AssertEqual((uint32_t)stats.questions(), (uint32_t)1);
+            AssertEqual(stats.max(), (uint32_t)1);
+        });
+
+        std::thread ct([&](){
+            { // wait for host to be ready
+                std::unique_lock<std::mutex> l(host_mutex);
+                while (!hostReady) cv.wait(l);
+            } // host is ready
+
+            TcpSocket conn;
+            conn.Connect(sessionHost);
+            conn.write(Message('n', Body("contestant\n" + nickname + "\n")).serialize());
+            Message res(conn.read());
+            
+            AssertEqual(res.type(), 'o'); // the response should be OK
+
+            // logged in ... now wait for question
+
+            // round 1 (indented for clarity)
+                Message r1_q_msg(conn.read());
+                AssertEqual(r1_q_msg.type(), 'u');
+
+                Question r1_q(r1_q_msg.body().content());
+                AssertEqual(r1_q, q1.getQuestion());
+
+                // send response
+                conn.write(Message('u', std::string(1, q1.getSolution())).serialize());
+                
+                // read result
+                Message r1_r_msg(conn.read());
+                AssertEqual(r1_r_msg.type(), 'u');
+                
+                // round results
+                RoundResults r1_r_rr;
+                AssertNotExcept(r1_r_rr = RoundResults::deserialize(r1_r_msg.body().content()));
+                AssertEqual(r1_r_rr.correct(), true);
+                AssertEqual(r1_r_rr.ratio(), 1.);
+                AssertEqual(r1_r_rr.questions(), (uint32_t)1);
+                AssertEqual(r1_r_rr.score(), (uint32_t)1);
+                AssertEqual(r1_r_rr.max(), (uint32_t)1);
+
+            // wait for termination message or next question (in this case, termination)
+                Message t_msg(conn.read());
+                AssertEqual(t_msg.type(), 't');
+        });
+
+        // join all threads
+        if (ct.joinable()) ct.join();
+        if (cs.joinable()) cs.join();
+
+    ENDCASE
+*/
 ENDTEST
 
 RUNTEST

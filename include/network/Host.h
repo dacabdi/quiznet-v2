@@ -2,6 +2,7 @@
 #define __HOST__H__
 
 #include "Except.h"
+#include "Common.h"
 
 #include <string>
 #include <ostream>

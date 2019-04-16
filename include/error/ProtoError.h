@@ -2,6 +2,7 @@
 #define __PROTOERROR_H__
 
 #include "Except.h"
+#include "Common.h"
 
 #include <map>
 #include <string>

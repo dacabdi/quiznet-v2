@@ -1,29 +1,55 @@
 #include "ContestSession.h"
-
 #include <iostream> //TODO delete this
 
-ContestSession::ContestSession(const std::map<uint32_t, SolvedQuestion>& questions)
-: _sock(TcpSocket()), _sq(questions)
+ContestSession::ContestSession(const questions_set& questions)
+: _sock(TcpSocket()), _sq(questions), _max(0), _state(INVALID)
 {
     _sock.Bind();
     _sock.Listen();
 
     // init stats
-    _max = 0;
-    for (const auto &q : _sq) 
-        _stats.emplace(q.first, 0.);
+    for (const auto &q : _sq) _stats.emplace(q.first, 0.);
+
+    {
+        std::unique_lock<std::mutex> l(_state_mutex);
+        _state = READY;
+    }
 }
 
-void ContestSession::GatherContestants(const size_t seconds)
+void ContestSession::StartSession(const size_t seconds)
 {
+    { // go gather contestants
+        std::unique_lock<std::mutex> l(_state_mutex);
+        
+        if(_state != READY)
+            throw Except("Attempted to start non-ready session",
+                         ___WHERE);
+
+        _state = STARTING;
+    }
+
     _contestants = _gatherContestants(seconds);
+    
+    { // now that we got all the contestants, declared the contest running
+        std::unique_lock<std::mutex> l(_state_mutex);
+        _state = RUNNING;
+    }
 }
 
 void ContestSession::PlayRound(const uint32_t qId)
 {
+    { // check if ready to run
+        std::unique_lock<std::mutex> l(_state_mutex);
+        
+        if(_state != RUNNING)
+            throw Except("Attempted to start run round on non-running session",
+                          ___WHERE);
+    }
+
     const SolvedQuestion& sq = _sq.at(qId);
-    std::map<std::string, std::future<bool>> rs; // assoc each player with future round result
-    for (auto &_c : _contestants) rs.emplace(_c.first, std::async([&]() -> bool {
+    std::map<std::string, std::shared_future<bool>> rs; // assoc each player with future round result
+    
+    for (auto &_c : _contestants) rs.emplace(_c.first, std::async(std::launch::async, [&]() -> bool {
         Contestant& c = _c.second; // get contestant object
         try { // wrap for the possibility of the contestant leaving before the end
             c.Conn.write(Message('u', sq.getQuestion().serialize()).serialize()); // send question
@@ -33,52 +59,67 @@ void ContestSession::PlayRound(const uint32_t qId)
         Message res; try             { res = Message(c.Conn.read()); } // if contestant...
         catch (const Except& e)      { return false; }                 // ... drops dead ... 
         catch (const ProtoExcept& e) { return false; }                 // ... or provides malformed answer ... 
-                                                                       // ... it will cause the contestant to lose the round
+                                                                    // ... it will cause the contestant to lose the round
         // not the right type of message or format, also lost
         if(res.type() != 'u' || res.body().content().size() != 1) return false; 
         
         char answer = res.body().content().at(0);   // get the answer from the response
-        return sq.getSolution() == answer;          // return result
+        
+        if (sq.getSolution() == answer)
+        {
+            _stats[qId]++; // update number of right answers for this question
+            return true;
+        }
+        
+        return false;
     }));
 
-    // wait for async tasks and do stats
-    uint32_t correct = 0;
-    for (auto &cRes : rs) 
-    { 
-        cRes.second.wait();              // wait for score to be ready
-        if(cRes.second.get()) correct++; // and increase stats for question if correct
-    } _stats[qId] = correct;
+    for (auto &cRes : rs) cRes.second.wait(); // wait for score to be ready
     
-    // do bookkeeping and tell contestants
-    double ratio = (double)correct / (double)_contestants.size();
+    // do book keeping and tell contestants
+    double ratio = (double) _stats[qId] / (double)_contestants.size(); // percent correct answers from all the contestants for that question
 
     for (auto &cRes : rs)
     {
         Contestant &c = _contestants.at(cRes.first);
-        std::string res;
+        bool result = cRes.second.get();
 
         // account and prepare response
-        if(cRes.second.get()) 
-        {
-            _max = std::max(c.increaseScore(), _max);
-            res = "correct\n";
-        } 
-        else 
-            res = "incorrect\n";
-
-        // append
-        //      1. round's correct ratio
-        //      2. number of questions
-        //      3. contestant's score
-        //      4. max score so far
+        if(result) _max = std::max(c.increaseScore(), _max);
+        RoundResults rr(cRes.second.get(), ratio, (uint32_t)_sq.size(), c.getScore(), _max);
         
-        res.append(std::to_string(ratio) + "\n");
-        res.append(std::to_string(_sq.size()) + "\n");
-        res.append(std::to_string(c.getScore()) + "\n");
-        res.append(std::to_string(_max) + "\n");
-
-        try { c.Conn.write(Message('o', res).serialize()); } 
+        // try to send
+        try { c.Conn.write(Message('u', rr.serialize()).serialize()); } 
         catch(const Except& e) {} // < ignore communication problems with the contestant
+    }
+}
+
+void ContestSession::TerminateSession(void)
+{
+    { // check if ready to run
+        std::unique_lock<std::mutex> l(_state_mutex);
+        
+        if(_state != RUNNING)
+            throw Except("Attempted to terminate non-running session",
+                          ___WHERE);
+    }
+
+    std::string bye = Message('t', "").serialize();
+    for (auto& cs : _contestants)
+    {
+        Contestant& c = cs.second;
+        try
+        {
+            c.Conn.write(bye);
+            c.Conn.Close();
+        }
+        catch(const Except& e) {} // ignore exceptions
+    }
+    _sock.Close();
+
+    { // consider the session terminated
+        std::unique_lock<std::mutex> l(_state_mutex);
+        _state = TERMINATED;
     }
 }
 
@@ -102,18 +143,15 @@ const std::map<std::string, Contestant>& ContestSession::getContestants(void) co
     return _contestants;
 }
 
-const std::map<uint32_t, uint32_t>& ContestSession::getStats(void) const
+ContestStats ContestSession::getStats(void) const
 {
-    return _stats;
+    return ContestStats(_stats, (uint32_t)_contestants.size(), _max);
 }
 
-uint32_t ContestSession::getStats(const uint32_t qId) const
+ContestState ContestSession::getState(void)
 {
-    if(!_stats.count(qId))
-        throw Except("Question stats do not exist", "ContestSession::getStats()", 
-                     "Id provided" + std::to_string(qId), false);
-    
-    return _stats.at(qId);
+    std::unique_lock<std::mutex> l(_state_mutex);
+    return _state;
 }
 
 std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_t seconds)
@@ -181,7 +219,7 @@ std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_
                         }
 
                         { // check nicknames for duplicates
-                            std::unique_lock<std::mutex> l(_mutex);
+                            std::unique_lock<std::mutex> l(_contestants_mutex);
                             if(contestants.count(nickName) == 0)
                             {
                                 cs.write(Message('o', Body("")).serialize());
@@ -211,100 +249,3 @@ std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_
 
     return contestants;
 }
-
-
-
-
-/*void ContestSession::playerThread(TcpSocket conn)
-{
-    ProtoError e;
-    Message msg;
-    char reqType;
-    std::string clientType, nickname;
-    uint32_t round;
-    Player contestant;
-    bool roundReady = false;
-    
-    // get nickname until valid
-    do
-    {
-        msg = Message(conn.read());
-        
-        reqType = msg.type();
-        std::istringstream iss = msg.body().contentStream();
-
-        iss >> clientType;
-        iss >> nickname;
-
-        if(reqType == 'n' && clientType == "contestant")
-        {
-            std::unique_lock<std::mutex> l(_mutex);
-            if(!_players.count(nickname))
-            {
-                contestant = Player(nickname);
-                _players.emplace(nickname, contestant);
-                break;
-            }
-            else e = ProtoError(NCKDUP, nickname);
-        } 
-        else e = ProtoError(MSGDSL, "");
-
-        conn.write(Message('e', e.serialize()).serialize());
-    } while(true);
-
-    // send OK and number of questions
-    msg = Message('o', std::to_string(_questionsRef.size()));
-    conn.write(msg.serialize());
-
-    // wait to begin
-    contestant.setReady(true);
-    waitOnPlayers();
-
-    for (auto q : _questionsRef)
-    {
-        // put the player on non ready mode
-        contestant.setReady(false);
-
-        // send question
-        msg = Message('u', q.second.getQuestion().serialize());
-        conn.write(msg.serialize());
-
-        // read response
-        msg = Message(conn.read());
-        char playerChoice = msg.body().content().at(0);
-
-        std::string rBody;
-        if(q.second.getSolution() == playerChoice) {
-            _players[nickname].increaseScore();
-            rBody = "correct";
-        } else rBody = "incorrect";
-        
-        // put the player on ready mode and wait for the rest
-        contestant.setReady(true);
-        waitOnPlayers();
-
-        // set max score
-        {
-            std::unique_lock<std::mutex> l(_mutex);
-            if(contestant.getScore() > _maxScore)
-                _maxScore = contestant.getScore();
-        }
-        
-        rBody += std::to_string(_maxScore);
-        conn.write(Message('o', rBody).serialize());
-    }
-    
-}
-
-void ContestSession::waitOnPlayers(void)
-{
-    bool roundReady = false;
-    while(!roundReady)
-    {
-        std::unique_lock<std::mutex> l(_mutex);
-        for(auto p : _players)
-            if(!p.second.isReady()) 
-                roundReady = false;
-    }
-    // TODO ^ : use conditional variables instead of a spin-lock
-}*/

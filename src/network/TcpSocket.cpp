@@ -3,12 +3,12 @@
 TcpSocket::TcpSocket(void)
 {
     int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (fd < 0) throw Except("Error opening socket", "TcpSocket::Socket()");
+    if (fd < 0) throw Except("Error opening socket", ___WHERE);
 
     // avoid 'address already in use' issue
     int yes=1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) 
-        throw Except("Error setting SO_REUSEADDR option", "TcpSocket::TcpSocket()");
+        throw Except("Error setting SO_REUSEADDR option", ___WHERE);
 
     _fd = fd;
 }
@@ -40,7 +40,7 @@ ssize_t TcpSocket::write(const std::string& s)
     ssize_t w = send(_fd, s.c_str(), s.size(), 0);
 
     if (w < (ssize_t)0)
-            throw Except("Error writing to socket", "TcpSocket::write()");
+            throw Except("Error writing to socket", ___WHERE);
 
     return w;
 }
@@ -57,7 +57,7 @@ ssize_t TcpSocket::write(std::istream& is)
         c = send(_fd, buff, strlen(buff), 0);
 
         if (c < (ssize_t)0)
-            throw Except("Error writing to socket", "TcpSocket::write()", 
+            throw Except("Error writing to socket", ___WHERE, 
                             "Last buffered content from input stream [" 
                             + std::string(buff) + "]");
 
@@ -75,7 +75,7 @@ ssize_t TcpSocket::read(char *buff, ssize_t n)
     r = recv(_fd, buff, n, flags);
 
     if (r < 0)
-        throw Except("Error reading from socket", "TcpSocket::read()", 
+        throw Except("Error reading from socket", ___WHERE, 
                         "Last buffered content [" + std::string(buff) + "]");
 
     return r;
@@ -98,7 +98,7 @@ std::string TcpSocket::read(const ssize_t n)
     if (r < 0)
     {
         std::string extra = "Last buffered content [" + std::string(buff) + "]";
-        delete [] buff; throw Except("Error reading from socket", "TcpSocket::read()", extra);
+        delete [] buff; throw Except("Error reading from socket", ___WHERE, extra);
     }
 
     buff[r] = '\0';
@@ -125,7 +125,7 @@ std::string TcpSocket::read(void)
 void TcpSocket::Connect(const Host& host)
 {
     if(!host.count())
-       throw Except("Host has no addresses to connect to", "TcpSocket::connect()"); 
+       throw Except("Host has no addresses to connect to", ___WHERE); 
 
     std::string failedNames = "";
     for(size_t i = 0; i < host.count(); ++i)
@@ -137,14 +137,14 @@ void TcpSocket::Connect(const Host& host)
         failedNames.append(host.fullName(i) + ";");
     }
 
-    throw Except("Failed to connect to '" + failedNames + "'", "TcpSocket::connect()");
+    throw Except("Failed to connect to '" + failedNames + "'", ___WHERE);
 }
 
 void TcpSocket::Bind(const Host& host)
 {
     const struct sockaddr_in addr = host.address();
     int r = bind(_fd, (struct sockaddr *)&addr, sizeof(addr));
-    if (r == -1) throw Except("Failed to bind socket", "TcpSocket::bind()");
+    if (r == -1) throw Except("Failed to bind socket", ___WHERE);
 }
 
 // passive binding
@@ -157,7 +157,7 @@ void TcpSocket::Bind(void)
 void TcpSocket::Listen(int backlog)
 {
     if (listen(_fd, backlog) == -1)
-        throw Except("Failed to listen on socket", "TcpSocket::listen()");
+        throw Except("Failed to listen on socket", ___WHERE);
 }
 
 TcpSocket TcpSocket::Accept(void)
@@ -168,7 +168,7 @@ TcpSocket TcpSocket::Accept(void)
     int cfd = accept(_fd, (struct sockaddr *)&address_stg, &address_stg_len);
 
     if (cfd == -1)
-       throw Except("Failed to accept connection on socket", "TcpSocket::accept()");
+       throw Except("Failed to accept connection on socket", ___WHERE);
 
     return TcpSocket(cfd);
 }
@@ -178,7 +178,7 @@ void TcpSocket::Close(void)
     if(_fd == -1) return;
     
     if (close(_fd) != 0)
-        throw Except("Failed to close socket", "TcpSocket::close()");
+        throw Except("Failed to close socket", ___WHERE);
 
     _fd = -1;
 }
@@ -186,7 +186,7 @@ void TcpSocket::Close(void)
 void TcpSocket::Shutdown(void)
 {
     if (shutdown(_fd, SHUT_RDWR) != 0)
-        throw Except("Failed to shutdown socket", "TcpSocket::shutdown()");
+        throw Except("Failed to shutdown socket", ___WHERE);
 }
 
 int TcpSocket::fd(void) const
@@ -206,7 +206,7 @@ Host TcpSocket::local(void) const
     socklen_t address_len = sizeof address;
 
     if(getsockname(_fd, (struct sockaddr *)&address, &address_len))
-        throw Except("Failed to retrieve local socket name", "TcpSocket::local()");
+        throw Except("Failed to retrieve local socket name", ___WHERE);
 
     return Host(address);
 }
@@ -230,7 +230,7 @@ Host TcpSocket::peer(void) const
     socklen_t address_len = sizeof address;
 
     if(getpeername(_fd, (struct sockaddr *)&address, &address_len))
-        throw Except("Failed to retrieve peer's socket name", "TcpSocket::peer()");
+        throw Except("Failed to retrieve peer's socket name", ___WHERE);
 
     return Host(address);
 }

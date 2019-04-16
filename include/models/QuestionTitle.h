@@ -1,6 +1,8 @@
 #ifndef __QUESTIONTITLE__H__
 #define __QUESTIONTITLE__H__
 
+#include "Common.h"
+
 #include <string>
 #include <ostream>
 #include <istream>

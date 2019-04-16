@@ -13,7 +13,7 @@ QuizBook::QuizBook(std::istream& is)
 const SolvedQuestion& QuizBook::getQuestionById(uint32_t id) const
 {
     if(!hasQuestion(id)) 
-        throw Except("Question id " + std::to_string(id) + " does not exist.", "QuizBook::getQuestionById()", "", false);
+        throw Except("Question id " + std::to_string(id) + " does not exist.", ___WHERE, "", false);
 
     return _questions.at(id);
 }
@@ -21,7 +21,7 @@ const SolvedQuestion& QuizBook::getQuestionById(uint32_t id) const
 const SolvedQuestion& QuizBook::getRandomQuestion(void) const
 {
     if(!size())
-        throw Except("Empty Quizbook!", "QuizBook::getRandomQuestion()", "", false);
+        throw Except("Empty Quizbook!", ___WHERE, "", false);
 
     // create a vector with all the keys
     std::vector<uint32_t> keys;
@@ -51,9 +51,7 @@ uint32_t QuizBook::insertQuestion(uint32_t id, const SolvedQuestion question)
 
     // if insertion did not happen (possibly duplicate id) ...
     if(!placement.second) // ... then except
-        throw Except("Attempted to insert duplicate id.", "QuizBook::insertQuestion()",
-                     "Id provided: " + std::to_string(id) +
-                     "Question provided (escaped): " + question.serialize(), false);
+        throw Except("Attempted to insert duplicate id.", ___WHERE, "Id provided: " + std::to_string(id) + "Question provided (escaped): " + question.serialize(), false);
     
     // if completed then call event handler 
     // with reference to constructed question
@@ -69,8 +67,7 @@ SolvedQuestion QuizBook::deleteQuestionById(const uint32_t id)
     
     // delete and check whether the deletion happened
     if(!_questions.erase(id))
-        throw Except("Question id " + std::to_string(id) + " does not exist.",
-                     "QuizBook::deleteQuestionById()", "", false);
+        throw Except("Question id " + std::to_string(id) + " does not exist.", ___WHERE, "", false);
 
     // call onDelete handler with a copy of the question
     if(onDelete) onDelete(deletedQuestion, *this);
@@ -161,7 +158,7 @@ uint32_t QuizBook::findFreeId(const uint32_t start) const
         if(!hasQuestion(id))
             return id;
 
-    throw Except("QuizBook maxed out", "QuizBook::findFreeId()", "", false);
+    throw Except("QuizBook maxed out", ___WHERE, "", false);
 }
 
 // ----------------OPERATORS--------------------------

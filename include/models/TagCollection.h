@@ -1,6 +1,7 @@
 #ifndef __TAGCOLLECTION__H__
 #define __TAGCOLLECTION__H__
 
+#include "Common.h"
 #include "Tag.h"
 #include "Utils.h"
 

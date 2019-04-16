@@ -2,6 +2,7 @@
 #define __BODY__H__
 
 #include "ProtoExcept.h"
+#include "Common.h"
 
 #include <string>  // std::string
 #include <ostream> // std::ostream

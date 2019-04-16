@@ -1,6 +1,8 @@
 #ifndef __UTILS__H__
 #define __UTILS__H__
 
+#include "Common.h"
+
 #include <string>
 #include <vector>
 #include <map>
@@ -35,6 +37,15 @@ namespace utils
             return false;
 
         return true;
+    }
+
+    // compare double and float
+    template<class T>
+    typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
+        almost_equal(T x, T y, int ulp = 2)
+    {
+        return std::abs(x-y) <= std::numeric_limits<T>::epsilon() * std::abs(x+y) * ulp
+            || std::abs(x-y) <  std::numeric_limits<T>::min();
     }
 }
 

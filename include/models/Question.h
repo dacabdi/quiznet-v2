@@ -1,6 +1,7 @@
 #ifndef __QUESTION__H__
 #define __QUESTION__H__
 
+#include "Common.h"
 #include "Tag.h"
 #include "TagCollection.h"
 #include "Choice.h"

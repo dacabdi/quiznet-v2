@@ -107,18 +107,12 @@ std::map<const char, const Choice>
 
             // check not repeated
             if (choices.find(pair.first) != choices.end())
-                throw std::invalid_argument(
-                    "ChoiceCollection::deserializeAllChoices():"
-                    "Repeated choice letter:" + pair.first);
+                throw Except("Repeated choice letter", ___WHERE, std::string(1,pair.first), false);
 
             if (pair.first != currentLetter) {
                 std::string expected = "";
                 expected.push_back(currentLetter);
-                throw std::invalid_argument(
-                     "ChoiceCollection::deserializeAllChoices():"
-                     "Choice letter out of order. "
-                     "Expected (" + expected +
-                     ") and received (" + pair.first + ").");
+                throw Except("Choice letter out of order", ___WHERE, "Expected (" + expected + ") and received (" + pair.first + ")", false);
             }
 
             // all checks passed
@@ -129,10 +123,7 @@ std::map<const char, const Choice>
     }
 
     if (count < 2)
-        throw std::invalid_argument(
-            "ChoiceCollection::deserializeAllChoices():"
-            "Must have at least 2 choices, Only " + 
-            std::to_string(count) + " were provided.");
+        throw Except("Must have at least 2 choices", ___WHERE, "Only " + std::to_string(count) + " were provided.", false);
 
     return choices;
 }
@@ -141,9 +132,7 @@ const std::pair<const char, const Choice>
     ChoiceCollection::deserializeChoice(const std::string& str) const
 {
     if(!validateChoice(str))
-        throw std::invalid_argument(
-            "ChoiceCollection::deserializeAllChoices():"
-            "Invalid choice format: [" + str + "]");
+        throw Except("Invalid choice format", ___WHERE, str, false);
 
     const std::pair<const char, const Choice> 
         pair(str.at(1), Choice(str.substr(4)));

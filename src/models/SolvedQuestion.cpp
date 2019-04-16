@@ -56,8 +56,7 @@ void SolvedQuestion::init(Question question, char solution)
 {
     if(!question.getChoices().hasChoice(solution)){ 
         std::string temp = ""; temp.push_back(solution);
-        throw Except("Provided solution " + temp + " does not exist in the question.",
-                     "SolvedQuestion::init()", "Question provided: " + question.serialize(), false);
+        throw Except("Provided solution " + temp + " does not exist in the question.", ___WHERE, "Question provided: " + question.serialize(), false);
     }
 
     _question = question;
@@ -70,8 +69,7 @@ char SolvedQuestion::deserializeSolution(std::istream& is) const
     std::getline(is, solutionLine);
 
     if(solutionLine.length() != 1)
-        throw Except("Error deserializing solution field", "SolvedQuestion::deserializeSolution()",
-                     "Wrong field length. Solution line read: " + solutionLine);
+        throw Except("Error deserializing solution field", ___WHERE, "Wrong field length. Solution line read: " + solutionLine);
     
     return solutionLine.front();
 }

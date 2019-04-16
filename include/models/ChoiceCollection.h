@@ -1,6 +1,7 @@
 #ifndef __CHOICECOLLECTION__H__
 #define __CHOICECOLLECTION__H__
 
+#include "Common.h"
 #include "Utils.h" // for map comparison
 #include "Choice.h"
 

@@ -2,6 +2,7 @@
 #define __SOLVEDQUESTION__H__
 
 #include "Except.h"
+#include "Common.h"
 #include "Question.h"
 #include <string>
 

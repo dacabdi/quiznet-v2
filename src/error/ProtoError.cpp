@@ -60,8 +60,7 @@ ProtoError ProtoError::deserialize(const std::string& s)
         return ProtoError(number, symbol, message, extra);
     } catch(const std::exception& e) {
         throw Except("Failed to deserialize protocol error", 
-                     "ProtoError::deserialize()",
-                     "InnerExceptionString : " + std::string(e.what()) + "\n" +
+                     ___WHERE, "InnerExceptionString : " + std::string(e.what()) + "\n" +
                      "PassedString : " + s + "\n", false);
     }
 }

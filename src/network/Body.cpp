@@ -21,21 +21,11 @@ Body Body::deserialize(const std::string& str)
     try {
         pos = str.find('\n');
         length = std::stoul(str.substr(0, pos));
-    } catch (const std::exception& e) {
-        throw ProtoExcept(MSGDSL, 
-            "Failed to deserialize message body [length] field\n"
-            "InnerException : " + std::string(e.what()) + "\n" +
-            "PassedSerialization : " + str + "\n");
-    }
+    } catch (const std::exception& e) { throw ProtoExcept(MSGDSL,  "Failed to deserialize message body [length] field\nInnerException: " + std::string(e.what()) + "\nPassedSerialization: " + str + "\nWhere: " + ___WHERE); }
 
     try {
         content = str.substr(pos+1, length);
-    } catch (const std::exception& e) {
-        throw ProtoExcept(MSGDSL, 
-            "Failed to deserialize message body [content] field\n" 
-            "InnerException : " + std::string(e.what()) + "\n" +
-            "PassedSerialization : " + str + "\n");
-    }
+    } catch (const std::exception& e) { throw ProtoExcept(MSGDSL, "Failed to deserialize message body [content] field\nInnerException : " + std::string(e.what()) + "\nPassedSerialization : " + str + "\nWhere: " + ___WHERE); }
 
     return Body(content);
 }

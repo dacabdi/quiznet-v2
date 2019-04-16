@@ -354,6 +354,16 @@ Notice that the `running-port` value is optional and will be set to zero (i.e., 
 
 Expect an error `CTNFND` indicating that the contest was not found if the contest id does not match any current contest on the server. Any other error is likely to provide further information by wrapping the inner exception in the `extra` field of the error response.
 
+##### TERMINATE CONTEST #####
+
+Tell client to end contest.
+
+```plain-text
+t length\n
+[stats]\n 
+```
+TODO! write this!
+
 ##### GENERAL MESSAGE #####
 
 Used for general non-specific communication. Since a contest participation has a predetermined flow, this kind of message will be used mainly for the contestant to participate in a contest.

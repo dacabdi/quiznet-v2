@@ -64,15 +64,15 @@ char Message::deserializeType(const std::string& str)
         char t = str.at(0);
         
         if(str.at(1) != ' ') 
-            throw std::invalid_argument("Message type is not followed by whitespace");
+            throw Except("Message type is not followed by whitespace", ___WHERE, "", false);
         if(!isalpha(t) || !islower(t))
-            throw std::invalid_argument("Message type is not lowercase alpha");
-        
+            throw Except("Message type is not lowercase alpha", ___WHERE, "", false);
         return t;
     } catch (const std::exception& e) {
         throw ProtoExcept(MSGDSL, 
             "Failed to deserialize message's [type] field\n" 
-            "InnerException : " + std::string(e.what()) + "\n" +
-            "PassedSerialization : " + str + "\n");
+            "InnerException: " + std::string(e.what()) + "\n" +
+            "PassedSerialization: " + str + "\n" +
+            "Where:" + ___WHERE);
     }
 }

@@ -1,6 +1,7 @@
 #ifndef __CHOICE__H__
 #define __CHOICE__H__
 
+#include "Common.h"
 #include <stdexcept>
 
 class Choice

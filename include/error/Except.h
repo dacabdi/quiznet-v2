@@ -20,6 +20,8 @@ extern "C"
 #include <stdexcept>
 #include <string>
 
+#include "Common.h"
+
 class Except : public std::runtime_error
 {
     public:

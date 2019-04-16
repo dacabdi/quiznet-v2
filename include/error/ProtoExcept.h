@@ -2,6 +2,7 @@
 #define __PROTOEXCEPT__H__
 
 #include "ProtoError.h"
+#include "Common.h"
 
 #include <stdexcept>
 #include <string>
