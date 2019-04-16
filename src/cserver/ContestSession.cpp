@@ -52,7 +52,10 @@ void ContestSession::PlayRound(const uint32_t qId)
     for (auto &_c : _contestants) rs.emplace(_c.first, std::async(std::launch::async, [&]() -> bool {
         Contestant& c = _c.second; // get contestant object
         try { // wrap for the possibility of the contestant leaving before the end
-            c.Conn.write(Message('u', sq.getQuestion().serialize()).serialize()); // send question
+            std::string qStr = sq.getQuestion().serialize();
+            Message msg('u', qStr);
+            std::string mStr = msg.serialize();
+            c.Conn.write(mStr); // send question
         } catch (const Except& e) { return false; }
 
         // try to get response
@@ -67,6 +70,10 @@ void ContestSession::PlayRound(const uint32_t qId)
         
         if (sq.getSolution() == answer)
         {
+            {// update score and max
+                std::unique_lock<std::mutex> l(_contestants_mutex);
+                _max = std::max(c.increaseScore(), _max);
+            }
             _stats[qId]++; // update number of right answers for this question
             return true;
         }
@@ -78,17 +85,10 @@ void ContestSession::PlayRound(const uint32_t qId)
     
     // do book keeping and tell contestants
     double ratio = (double) _stats[qId] / (double)_contestants.size(); // percent correct answers from all the contestants for that question
-
     for (auto &cRes : rs)
     {
         Contestant &c = _contestants.at(cRes.first);
-        bool result = cRes.second.get();
-
-        // account and prepare response
-        if(result) _max = std::max(c.increaseScore(), _max);
         RoundResults rr(cRes.second.get(), ratio, (uint32_t)_sq.size(), c.getScore(), _max);
-        
-        // try to send
         try { c.Conn.write(Message('u', rr.serialize()).serialize()); } 
         catch(const Except& e) {} // < ignore communication problems with the contestant
     }
@@ -110,10 +110,16 @@ void ContestSession::TerminateSession(void)
         Contestant& c = cs.second;
         try
         {
-            c.Conn.write(bye);
-            c.Conn.Close();
+            c.Conn.write(bye);  // write bye and wait for response
+            Message ack(c.Conn.read());
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            if(ack.type() == 'o')
+                c.Conn.Close();
         }
-        catch(const Except& e) {} // ignore exceptions
+        catch(const Except& e) {}
+        // ignore communication problem exceptions
+        // if client abandons or does not ack, the session
+        // should go on
     }
     _sock.Close();
 
@@ -170,7 +176,8 @@ std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_
         try {
             // wait for connection
             TcpSocket cs = _sock.Accept();
-            // negotiate session with the contestant
+            // negotiate session with the contestant 
+            // TODO the client has the ability to stall the session if gets stopped on negotiation
             ths.push_back(std::thread([&](TcpSocket cs) {
                 while(true)
                 {

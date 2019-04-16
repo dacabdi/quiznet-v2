@@ -1,6 +1,6 @@
 #include "Body.h"
 
-Body::Body(const std::string& str)
+Body::Body(const std::string str)
 : _length(str.length()), _content(str)
 {}
 

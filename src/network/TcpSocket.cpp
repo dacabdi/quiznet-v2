@@ -35,18 +35,23 @@ void swap(TcpSocket& a, TcpSocket& b) // nothrow
     swap(a._fd, b._fd);
 }
 
-ssize_t TcpSocket::write(const std::string& s)
+ssize_t TcpSocket::write(const std::string s)
 {
-    ssize_t w = send(_fd, s.c_str(), s.size(), 0);
+    std::unique_lock<std::mutex> l(_rw_mutex);
+
+    const char * sp = s.c_str();
+    ssize_t w = send(_fd, sp, s.size(), 0);
 
     if (w < (ssize_t)0)
-            throw Except("Error writing to socket", ___WHERE);
+        throw Except("Error writing to socket", ___WHERE);
 
     return w;
 }
 
 ssize_t TcpSocket::write(std::istream& is)
 {
+    std::unique_lock<std::mutex> l(_rw_mutex);
+
     std::streamsize n = __BUFWR;
     ssize_t t = 0, c = 0; // total, current
     char buff[__BUFWR];
@@ -69,6 +74,8 @@ ssize_t TcpSocket::write(std::istream& is)
 
 ssize_t TcpSocket::read(char *buff, ssize_t n)
 {
+    std::unique_lock<std::mutex> l(_rw_mutex);
+
     ssize_t r = 0;
     int flags = 0;
 
@@ -83,6 +90,8 @@ ssize_t TcpSocket::read(char *buff, ssize_t n)
 
 std::string TcpSocket::read(const ssize_t n)
 {
+    std::unique_lock<std::mutex> l(_rw_mutex);
+    
     /*
      * Did not reuse read(char*, ssize_t) because in the event
      * that an exception is thrown, the buffer is not dealloc.

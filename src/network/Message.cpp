@@ -62,7 +62,6 @@ char Message::deserializeType(const std::string& str)
 {
     try {
         char t = str.at(0);
-        
         if(str.at(1) != ' ') 
             throw Except("Message type is not followed by whitespace", ___WHERE, "", false);
         if(!isalpha(t) || !islower(t))

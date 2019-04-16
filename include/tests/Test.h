@@ -1,6 +1,10 @@
 #ifndef __TESTS_H__
 #define __TESTS_H__
 
+// TODO: use a singleton for all these, make atomic
+// TODO: macro overloading
+// TODO: thread safe setting of assert status
+
 #include "Except.h"
 #include "ProtoExcept.h"
 #include "Utils.h"
@@ -24,33 +28,33 @@
 #define __CYN__   "\033[36m"
 #define __MAG__   "\033[35m"
 
-// TODO: use a singleton for all these, make atomic
 std::ostringstream ____report;
 std::mutex ____report_mutex;
+
+std::mutex ____status_mutex;
 int ____line = 0;
 std::string ____file  = "";
 std::string ____arg_a = "";
 std::string ____arg_b = "";
 
-// TODO: macro overloading
+#define ____STATUS(a,b) std::unique_lock<std::mutex> l(____status_mutex); ____line = __LINE__; ____file = __FILE__; ____arg_a = std::string(#a); ____arg_b = std::string(#b);
 
-#define AssertEqual(a, b) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertEqual(a, b) && __r__;}
-#define AssertNotEqual(a, b) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__= assertNotEqual(a, b) && __r__;}
+#define AssertEqual(a, b) {____STATUS(a,b) __r__ = assertEqual(a, b) && __r__;}
+#define AssertNotEqual(a, b) {____STATUS(a,b) __r__= assertNotEqual(a, b) && __r__;}
 
-#define AssertEqualComp(a, b, comp) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertEqual(a, b, comp) && __r__;}
-#define AssertNotEqualComp(a, b, comp) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertNotEqual(a, b, comp) && __r__};
+#define AssertEqualComp(a, b, comp) {____STATUS(a,b) __r__ = assertEqual(a, b, comp) && __r__;}
+#define AssertNotEqualComp(a, b, comp) {____STATUS(a,b) __r__ = assertNotEqual(a, b, comp) && __r__};
 
-#define AssertEqualCompPrint(a, b, comp, print) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertEqual(a, b, comp, print) && __r__};
-#define AssertNotEqualCompPrint(a, b, comp, print) {____line = __LINE__; ____file = __FILE__; ____arg_a = #a; ____arg_b = #b; __r__ = assertNotEqual(a, b, comp, print) && __r__};
+#define AssertEqualCompPrint(a, b, comp, print) {____STATUS(a,b) __r__ = assertEqual(a, b, comp, print) && __r__};
+#define AssertNotEqualCompPrint(a, b, comp, print) {____STATUS(a,b) __r__ = assertNotEqual(a, b, comp, print) && __r__};
 
-#define assertExcept(operation, __r__var__) { try {____line = __LINE__; ____file = __FILE__;  operation;\
+#define assertExcept(operation, __r__var__) { try { ____STATUS(operation,__r__var__)  operation;\
     __r__var__ = false;\
-    std::unique_lock<std::mutex> l(____report_mutex);\
+    std::unique_lock<std::mutex> l2(____report_mutex);\
     ____report << __RED__ << "[assertExcept Failed]\n" << __CYN__  \
-               << "on operation: '" << #operation << "'\n" \
+               << "on operation: '" << ____arg_a << "'\n" \
                << "at: '" << ____file << ":" << ____line << "'\n" \
                << __RESET__ << "\n";\
-    l.unlock();\
 } catch(...) {\
     __r__var__ = __r__var__ && true;\
 }}
@@ -66,7 +70,6 @@ std::string ____arg_b = "";
                << "on operation: '" << #operation << "'\n" \
                << "at: '" << ____file << ":" << ____line << "'\n" \
                << __RESET__ << "\n";\
-    l.unlock();\
 }}
 
 #define AssertNotExcept(operation) assertNotExcept(operation, __r__)
@@ -225,9 +228,20 @@ bool assertEqual(const std::map<K,V>& actual,
 bool assertEqual(const double& actual, 
                  const double& expected)
 {
-    // TODO: pass down ulp
+    // TODO: pass down precision
     return assertEqual<const double>(actual, expected, 
         [](const double& a, const double& b) -> bool {
+            return utils::almost_equal(a, b);
+        });
+}
+
+// float
+bool assertEqual(const float& actual, 
+                 const float& expected)
+{
+    // TODO: pass down precision
+    return assertEqual<const float>(actual, expected, 
+        [](const float& a, const float& b) -> bool {
             return utils::almost_equal(a, b);
         });
 }

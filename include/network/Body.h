@@ -12,7 +12,7 @@ class Body
 {
     public:
 
-        Body(const std::string&);
+        Body(const std::string);
         Body(const char * const);
         Body(void);
 

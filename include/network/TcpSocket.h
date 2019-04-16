@@ -9,15 +9,12 @@
 #include <ostream>
 #include <string>
 #include <sstream>
-#include <thread> // for timed out accept
-#include <condition_variable>
-#include <chrono>
+#include <mutex>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
-
 
 #ifndef __BUFRD
     #define __BUFRD 4096
@@ -49,7 +46,7 @@ class TcpSocket
         friend void swap(TcpSocket& a, TcpSocket& b); // nothrow
 
         // write
-        ssize_t write(const std::string&); // from a string
+        ssize_t write(const std::string);  // from a string
         ssize_t write(std::istream&);      // from an input stream
         
         // read
@@ -84,6 +81,7 @@ class TcpSocket
 
     protected : 
     
+        std::mutex _rw_mutex;
         int _fd = -1;
         
         TcpSocket(int);
