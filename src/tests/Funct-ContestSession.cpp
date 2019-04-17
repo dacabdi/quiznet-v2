@@ -1170,8 +1170,8 @@ TEST
 
     ENDCASE,
 
-    CASE("playRound_twoContestantsThreeRounds20Times") // abusing timing issues
-    for(size_t i = 0; i < 20; i++) {
+    CASE("playRound_twoContestantsThreeRounds5Times") // abusing timing issues
+    for(size_t i = 0; i < 5; i++) {
         // SUMMARY
         //      GIVEN A contest session on any given port with three questions
         //      WHEN  Join two contestants before timeout
@@ -1573,6 +1573,7 @@ TEST
     ENDCASE,
 
     CASE("playRound_30Contestants8RoundsRandTiming") // abusing timing issues
+    while(true){
         // SUMMARY
         //      GIVEN A contest session on any given port with 8 questions
         //      WHEN  Join 30 contestants before timeout
@@ -1588,11 +1589,6 @@ TEST
         qs.emplace(q7_Id, q7);
         qs.emplace(q8_Id, q8);
         
-        size_t timeout = 20;
-        std::vector<std::string> names = ____name_set;
-        std::sort(names.begin(), names.end());
-        uint32_t contestants = (uint32_t)names.size();
-
         std::mutex round_correct_mutex;
         std::map<uint32_t, uint32_t> round_correct;
         round_correct.emplace(q1_Id, 0);
@@ -1603,6 +1599,17 @@ TEST
         round_correct.emplace(q6_Id, 0);
         round_correct.emplace(q7_Id, 0);
         round_correct.emplace(q8_Id, 0);
+
+        for(size_t questions_repeated = 9; questions_repeated < 100; questions_repeated++)
+        {
+            qs.emplace((uint32_t)questions_repeated, q8);
+            round_correct.emplace((uint32_t)questions_repeated, 0);
+        }
+
+        size_t timeout = 20;
+        std::vector<std::string> names = ____name_set;
+        std::sort(names.begin(), names.end());
+        uint32_t contestants = (uint32_t)names.size();
 
         uint32_t max = 0;
         std::vector<uint32_t> scores;
@@ -1629,22 +1636,25 @@ TEST
 
                 std::vector<std::string> namesRead = cs.getNames();
                 std::sort(namesRead.begin(), namesRead.end());
-                AssertEqual(namesRead.size(), (size_t)contestants);
-                AssertEqual(namesRead, names);
+                //AssertEqual(namesRead.size(), (size_t)contestants);
+                //AssertEqual(namesRead, names);
                 
-                for(auto& q : qs) 
+                for(auto& q : qs)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     cs.PlayRound(q.first);
+                }
+                    
 
                 cs.TerminateSession();
 
-                AssertEqual(cs.getState(), TERMINATED);
-
-                ContestStats stats = cs.getStats();
+                //AssertEqual(cs.getState(), TERMINATED);
+                //ContestStats stats = cs.getStats();
                 //AssertEqual(stats.average(), overallAvgTotal/contestants); // TODO CALCULATE
-                AssertEqual(stats.contestants(), (uint32_t)contestants);
-                AssertEqual((uint32_t)stats.questions(), (uint32_t)qs.size());
+                //AssertEqual(stats.contestants(), (uint32_t)contestants);
+                //AssertEqual((uint32_t)stats.questions(), (uint32_t)qs.size());
                 //AssertEqual(stats.max(), (uint32_t)overallMax);
-                AssertEqual(stats.highest(), max);
+                //AssertEqual(stats.highest(), max);
             } catch(const std::exception& e) {
                 std::cout << "Exception in contest session thread : " << e.what() << std::endl;
             }
@@ -1668,7 +1678,7 @@ TEST
                     conn.Connect(sessionHost);
                     conn.write(Message('n', Body("contestant\n" + names[i] + "\n")).serialize());
                     Message res(conn.read());
-                    AssertEqual(res.type(), 'o'); // the response should be OK
+                    //AssertEqual(res.type(), 'o'); // the response should be OK
                     std::cout << "Contestant " << i << "(" << names[i] << ")" << " joined! " << std::endl;
 
                     // logged in ... now wait for question
@@ -1676,19 +1686,21 @@ TEST
                     {
                         // read the question's message
                         Message q_msg(conn.read());
-                        AssertEqual(q_msg.type(), 'u');
+                        //AssertEqual(q_msg.type(), 'u');
                         // question deserialized
                         Question q(q_msg.body().content());
-                        AssertEqual(q, qs.at((uint32_t)round).getQuestion());
+                        //AssertEqual(q, qs.at((uint32_t)round).getQuestion());
                         // respond randomly right or wrong
                         int wrong = UniformRandom(0,1).generate(); // 0 not wrong, 1 wrong
                         
+                        //uint32_t localmax;
                         if(!wrong) 
                         {
                             std::unique_lock<std::mutex> l(round_correct_mutex);
                             scores[(uint32_t)i]++;
                             round_correct[(uint32_t)round]++;
                             max = *(std::max_element(scores.begin(), scores.end()));
+                            //localmax = max;
                         }
 
                         //wait random time before responding (1...5 seconds)
@@ -1700,20 +1712,20 @@ TEST
                         conn.write(Message('u', std::string(1, char(qs.at((uint32_t)round).getSolution()+wrong))).serialize());
                         // read round response
                         Message res(conn.read());
-                        AssertEqual(res.type(), 'u');
+                        //AssertEqual(res.type(), 'u');
                         // round results
-                        RoundResults rr;
-                        AssertNotExcept(rr = RoundResults::deserialize(res.body().content()));
-                        AssertEqual(rr.correct(), (!wrong));
-                        AssertEqual(rr.ratio(), double((double)round_correct[(uint32_t)round] / (double)contestants));
-                        AssertEqual(rr.questions(), (uint32_t)qs.size());
-                        AssertEqual(rr.score(), scores[(uint32_t)i]);
-                        AssertEqual(rr.max(), (uint32_t)max);
+                        //RoundResults rr;
+                        //AssertNotExcept(rr = RoundResults::deserialize(res.body().content()));
+                        //AssertEqual(rr.correct(), (!wrong));
+                        //AssertEqual(rr.ratio(), double((double)round_correct[(uint32_t)round] / (double)contestants));
+                        //AssertEqual(rr.questions(), (uint32_t)qs.size());
+                        //AssertEqual(rr.score(), scores[(uint32_t)i]);
+                        //AssertEqual(rr.max(), (uint32_t)localmax);
                     }
 
                     // wait for termination message or next question (in this case, termination)
                     Message t_msg(conn.read());
-                    AssertEqual(t_msg.type(), 't');
+                    //AssertEqual(t_msg.type(), 't');
                     conn.write(Message('o', "").serialize());
                 } catch(const std::exception& e) {
                     std::cout << "Exception in client thread " << i << " : " << e.what() << std::endl;
@@ -1724,7 +1736,7 @@ TEST
         for(auto& c_th : contestant_threads)
             if(c_th.joinable()) c_th.join();
         if (cs.joinable()) cs.join();
-
+    }
     ENDCASE
 
 ENDTEST
