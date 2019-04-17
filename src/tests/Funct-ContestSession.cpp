@@ -1,9 +1,9 @@
+#include "UniformRandom.h"
 #include "Test.h"
 #include "Utils.h"
 #include "Question.h"
 #include "RoundResults.h"
 #include "ContestSession.h"
-#include "UniformRandom.h"
 
 #include <algorithm>
 
@@ -1170,7 +1170,7 @@ TEST
 
     ENDCASE,
 
-    CASE("playRound_twoContestantsThreeRounds5Times") // abusing timing issues
+    CASE("playRound_twoContestantsThreeRounds20Times") // abusing timing issues
     for(size_t i = 0; i < 5; i++) {
         // SUMMARY
         //      GIVEN A contest session on any given port with three questions
@@ -1648,8 +1648,8 @@ TEST
 
                 cs.TerminateSession();
 
-                //AssertEqual(cs.getState(), TERMINATED);
-                //ContestStats stats = cs.getStats();
+                AssertEqual(cs.getState(), TERMINATED);
+                ContestStats stats = cs.getStats();
                 //AssertEqual(stats.average(), overallAvgTotal/contestants); // TODO CALCULATE
                 //AssertEqual(stats.contestants(), (uint32_t)contestants);
                 //AssertEqual((uint32_t)stats.questions(), (uint32_t)qs.size());
@@ -1707,9 +1707,12 @@ TEST
                         int question_delay = UniformRandom(1,(int)5).generate();
                         std::cout << "Contestant " << i << "(" << names[i] << ")" << " will answer round " << round << " in " << question_delay << std::endl;
                         std::this_thread::sleep_for(std::chrono::seconds(question_delay));
+                        
+                        conn.write(Message('u', std::string(1, char(qs.at((uint32_t)round).getSolution()+wrong))).serialize());
                         std::cout << "Contestant " << i << "(" << names[i] << ")" << " answered round " << round << std::endl;
 
-                        conn.write(Message('u', std::string(1, char(qs.at((uint32_t)round).getSolution()+wrong))).serialize());
+                        std::cout << "Contestant " << i << "(" << names[i] << ")" << " reading results for round " << round << std::endl;
+                        std::this_thread::sleep_for(std::chrono::milliseconds(300));
                         // read round response
                         Message res(conn.read());
                         //AssertEqual(res.type(), 'u');

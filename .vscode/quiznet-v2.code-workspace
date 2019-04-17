@@ -56,7 +56,8 @@
 			"deque": "cpp",
 			"string": "cpp",
 			"cstdarg": "cpp",
-			"cinttypes": "cpp"
+			"cinttypes": "cpp",
+			"algorithm": "cpp"
 		},
 		"C_Cpp.intelliSenseCacheSize": 100,
 		"cSpell.words": [

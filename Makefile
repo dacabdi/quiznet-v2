@@ -61,7 +61,7 @@ ifeq ($(MODE),debug)
 	EXTF := -g -Wall -Wextra -O0 -Wconversion -pedantic
 else
 	OUT := $(BIN)/release
-	EXTF := -Wall
+	EXTF := 
 endif
 
 

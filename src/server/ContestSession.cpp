@@ -1,5 +1,4 @@
 #include "ContestSession.h"
-#include <iostream> //TODO delete this
 
 ContestSession::ContestSession(const questions_set& questions)
 : _sock(TcpSocket()), _sq(questions), _max(0), _state(INVALID)
@@ -112,7 +111,6 @@ void ContestSession::TerminateSession(void)
         {
             c.Conn.write(bye);  // write bye and wait for response
             Message ack(c.Conn.read());
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
             if(ack.type() == 'o')
                 c.Conn.Close();
         }

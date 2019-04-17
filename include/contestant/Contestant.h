@@ -10,6 +10,7 @@ class Contestant
 {
     public:
     
+        Contestant(void);
         Contestant(const std::string nick, TcpSocket socket);
 
         uint32_t getScore(void) const;

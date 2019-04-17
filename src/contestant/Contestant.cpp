@@ -1,5 +1,9 @@
 #include "Contestant.h"
 
+Contestant::Contestant(void)
+: Conn(TcpSocket(false)), Nickname(""), _score(0)
+{}
+
 Contestant::Contestant(const std::string nick, TcpSocket conn)
 : Conn(std::move(conn)), Nickname(nick), _score(0)
 {}
@@ -13,5 +17,3 @@ uint32_t Contestant::increaseScore(void)
 {
     return (++_score);
 }
-
-

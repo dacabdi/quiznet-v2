@@ -1,16 +1,10 @@
 #include "TcpSocket.h"
 
-TcpSocket::TcpSocket(void)
+TcpSocket::TcpSocket(bool init)
+: _fd(-1)
 {
-    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (fd < 0) throw Except("Error opening socket", ___WHERE);
-
-    // avoid 'address already in use' issue
-    int yes=1;
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) 
-        throw Except("Error setting SO_REUSEADDR option", ___WHERE);
-
-    _fd = fd;
+    if(init) 
+        _init_socket();
 }
 
 // move constructor
@@ -37,8 +31,6 @@ void swap(TcpSocket& a, TcpSocket& b) // nothrow
 
 ssize_t TcpSocket::write(const std::string s)
 {
-    std::unique_lock<std::mutex> l(_rw_mutex);
-
     const char * sp = s.c_str();
     ssize_t w = send(_fd, sp, s.size(), 0);
 
@@ -50,8 +42,6 @@ ssize_t TcpSocket::write(const std::string s)
 
 ssize_t TcpSocket::write(std::istream& is)
 {
-    std::unique_lock<std::mutex> l(_rw_mutex);
-
     std::streamsize n = __BUFWR;
     ssize_t t = 0, c = 0; // total, current
     char buff[__BUFWR];
@@ -74,8 +64,6 @@ ssize_t TcpSocket::write(std::istream& is)
 
 ssize_t TcpSocket::read(char *buff, ssize_t n)
 {
-    std::unique_lock<std::mutex> l(_rw_mutex);
-
     ssize_t r = 0;
     int flags = 0;
 
@@ -90,8 +78,6 @@ ssize_t TcpSocket::read(char *buff, ssize_t n)
 
 std::string TcpSocket::read(const ssize_t n)
 {
-    std::unique_lock<std::mutex> l(_rw_mutex);
-    
     /*
      * Did not reuse read(char*, ssize_t) because in the event
      * that an exception is thrown, the buffer is not dealloc.
@@ -249,8 +235,21 @@ TcpSocket::~TcpSocket()
     this->Close();
 }
 
-// protected constructor
+// protected constructo (used for connections)
 TcpSocket::TcpSocket(int fd)
 {
+    _fd = fd;
+}
+
+void TcpSocket::_init_socket(void)
+{
+    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (fd < 0) throw Except("Error opening socket", ___WHERE);
+
+    // avoid 'address already in use' issue
+    int yes=1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) 
+        throw Except("Error setting SO_REUSEADDR option", ___WHERE);
+
     _fd = fd;
 }

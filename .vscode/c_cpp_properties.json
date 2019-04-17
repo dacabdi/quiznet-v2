@@ -10,7 +10,8 @@
                 "${workspaceFolder}/include/tests",
                 "${workspaceFolder}/include/misc",
                 "${workspaceFolder}/include/models",
-                "${workspaceFolder}/include/cserver"
+                "${workspaceFolder}/include/server",
+                "${workspaceFolder}/include/contestant"
             ],
             "browse": {
                 "path": [

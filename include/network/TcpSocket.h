@@ -32,7 +32,7 @@ class TcpSocket
 {
     public :
 
-        TcpSocket(void); // socket default constructor
+        TcpSocket(bool init = true); // socket default constructor
         
         // disallow copy and copy assignment operator
         TcpSocket(const TcpSocket&)            = delete;
@@ -81,10 +81,10 @@ class TcpSocket
 
     protected : 
     
-        std::mutex _rw_mutex;
         int _fd = -1;
         
         TcpSocket(int);
+        void _init_socket(void);
 };
 
 #endif // __TCPSOCKET__H__
