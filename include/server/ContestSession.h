@@ -44,7 +44,9 @@ class ContestSession
 
         ContestSession(const questions_set&);
         
-        void StartSession(const size_t seconds = 60);
+        ContestStats run(const size_t timeout = 60); // in seconds
+
+        void StartSession(const size_t timeout = 60); // in seconds
         void PlayRound(const uint32_t qId);
         void TerminateSession(void);
 

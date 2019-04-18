@@ -22,6 +22,7 @@
 #define FAILGT 11
 #define MSGDSL 12
 #define NCKDUP 13
+#define EMPTYN 14
 
 class ProtoError
 {

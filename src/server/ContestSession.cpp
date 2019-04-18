@@ -1,21 +1,36 @@
 #include "ContestSession.h"
 
 ContestSession::ContestSession(const questions_set& questions)
-: _sock(TcpSocket()), _sq(questions), _max(0), _state(INVALID)
+: _sock(TcpSocket()), _sq(questions), _max((uint32_t)0), _state(INVALID)
 {
     _sock.Bind();
     _sock.Listen();
 
     // init stats
-    for (const auto &q : _sq) _stats.emplace(q.first, 0.);
-
+    for (const auto &q : _sq) 
+        _stats.emplace(q.first, (uint32_t)0);
+        
     {
         std::unique_lock<std::mutex> l(_state_mutex);
         _state = READY;
     }
 }
 
-void ContestSession::StartSession(const size_t seconds)
+ContestStats ContestSession::run(const size_t timeout)
+{
+    StartSession(timeout);
+    
+    // play all rounds for all players   
+    _max = 0;
+    for(auto& q : _sq)
+        PlayRound(q.first);
+
+    TerminateSession();
+
+    return getStats();
+}
+
+void ContestSession::StartSession(const size_t timeout)
 {
     { // go gather contestants
         std::unique_lock<std::mutex> l(_state_mutex);
@@ -27,7 +42,7 @@ void ContestSession::StartSession(const size_t seconds)
         _state = STARTING;
     }
 
-    _contestants = _gatherContestants(seconds);
+    _contestants = _gatherContestants(timeout);
     
     { // now that we got all the contestants, declared the contest running
         std::unique_lock<std::mutex> l(_state_mutex);
@@ -47,7 +62,7 @@ void ContestSession::PlayRound(const uint32_t qId)
 
     const SolvedQuestion& sq = _sq.at(qId);
     std::map<std::string, std::shared_future<bool>> rs; // assoc each player with future round result
-    
+
     for (auto &_c : _contestants) rs.emplace(_c.first, std::async(std::launch::async, [&]() -> bool {
         Contestant& c = _c.second; // get contestant object
         try { // wrap for the possibility of the contestant leaving before the end
@@ -66,7 +81,7 @@ void ContestSession::PlayRound(const uint32_t qId)
         if(res.type() != 'u' || res.body().content().size() != 1) return false; 
         
         char answer = res.body().content().at(0);   // get the answer from the response
-        
+
         if (sq.getSolution() == answer)
         {
             {// update score and max
@@ -87,8 +102,15 @@ void ContestSession::PlayRound(const uint32_t qId)
     for (auto &cRes : rs)
     {
         Contestant &c = _contestants.at(cRes.first);
-        RoundResults rr(cRes.second.get(), ratio, (uint32_t)_sq.size(), c.getScore(), _max);
-        try { c.Conn.write(Message('u', rr.serialize()).serialize()); } 
+
+        uint32_t questions = (uint32_t)_sq.size();
+        uint32_t score = c.getScore();
+
+        RoundResults rr(cRes.second.get(), ratio, questions, score, _max);
+        try {
+            c.Conn.write(Message('u', rr.serialize()).serialize());
+            Message(c.Conn.read()); // ack results
+        } 
         catch(const Except& e) {} // < ignore communication problems with the contestant
     }
 }
@@ -158,18 +180,18 @@ ContestState ContestSession::getState(void)
     return _state;
 }
 
-std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_t seconds)
+std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_t timeout)
 {
     std::vector<std::thread> ths;
     std::map<std::string, Contestant> contestants;
 
-    bool timeout = false;
+    bool timedout = false;
     std::thread timeout_signal([&](){
-        std::this_thread::sleep_for(std::chrono::seconds(seconds));
+        std::this_thread::sleep_for(std::chrono::seconds(timeout));
         _sock.Shutdown();
     });
 
-    while(!timeout)
+    while(!timedout)
     {
         try {
             // wait for connection
@@ -219,7 +241,7 @@ std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_
 
                         if(nickName == "")
                         {
-                            cs.write(Message('e', ProtoError(FAILGT, "Empty contestant nickname").serialize()).serialize());
+                            cs.write(Message('e', ProtoError(EMPTYN, "").serialize()).serialize());
                             continue;
                         }
 
@@ -228,6 +250,7 @@ std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_
                             if(contestants.count(nickName) == 0)
                             {
                                 cs.write(Message('o', Body("")).serialize());
+                                //if(Message(cs.read()).type() == 'o') // read ack to know contestant will be expecting questions
                                 contestants.emplace(nickName, Contestant(nickName, std::move(cs)));
                                 break;
                             }
@@ -239,7 +262,7 @@ std::map<std::string, Contestant> ContestSession::_gatherContestants(const size_
                 }
             }, std::move(cs)));
         } catch(const Except& e) {
-            if     (e.Errno == EINVAL)     timeout = true;
+            if     (e.Errno == EINVAL)     timedout = true;
             else if(e.Errno == ECONNRESET) continue; // client dropped dead
             else throw e;
         }

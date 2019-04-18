@@ -15,6 +15,11 @@ ContestStats::ContestStats(const std::string& str)
 ContestStats ContestStats::deserialize(const std::string& str)
 {
     std::istringstream iss(str);
+    return ContestStats::deserialize(iss);
+}
+
+ContestStats ContestStats::deserialize(std::istream& iss)
+{
     std::string buff;
     
     // data fields

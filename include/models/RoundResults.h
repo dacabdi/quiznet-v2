@@ -6,6 +6,7 @@
 #include "Common.h"
 
 #include <cstdint>
+#include <cmath>
 
 class RoundResults
 {
@@ -24,17 +25,19 @@ class RoundResults
         uint32_t score(void) const;
         uint32_t max(void) const;
 
+        std::string present(void) const;
+
         friend std::ostream& operator<<(std::ostream &os, const RoundResults& ref);
         bool operator==(const RoundResults& ref) const;
         bool operator!=(const RoundResults& ref) const;
 
     private:
 
-        bool     _correct;
-        double   _ratio;
-        uint32_t _questions;
-        uint32_t _score;
-        uint32_t _max;
+        bool     _correct = false;
+        double   _ratio = 0.;
+        uint32_t _questions = 0;
+        uint32_t _score = 0;
+        uint32_t _max = 0;
 };
 
 #endif // __ROUNDRESULTS__H__

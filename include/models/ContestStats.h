@@ -21,6 +21,7 @@ class ContestStats
         ContestStats(const std::string&);
 
         static ContestStats deserialize(const std::string&);
+        static ContestStats deserialize(std::istream& iss);
         std::string serialize(void) const;
 
         uint32_t weight(void) const;            // get the weight of this data set (|contestants| * |questions|)
@@ -41,8 +42,8 @@ class ContestStats
     private:
         
         score_set _set;
-        uint32_t  _contestants;
-        uint32_t  _highest;
+        uint32_t  _contestants = 0;
+        uint32_t  _highest = 0;
 
         double _percentage(const uint32_t) const;  // returns percentage for score 
 };

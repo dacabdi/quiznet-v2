@@ -38,6 +38,14 @@ cat $(1).log; \
 rm -f $(1).log;
 endef
 
+define run_test_print_live
+printf "%b" "\n$(COM_COLOR) $(TST_STRING) $(TST_COLOR)$$(basename $(1) .test)$(NO_COLOR)\r"; \
+$(1); RESULT=$$?; \
+if [ $$RESULT -ne 0 ]; then printf "%-76b%b" "$(COM_COLOR) $(TST_STRING)$(TST_COLOR) $$(basename $(1) .test)" "$(ERROR_COLOR)$(FAILED_STRING)$(NO_COLOR)\n"   ; \
+else printf "%-76b%b" "$(COM_COLOR) $(TST_STRING)$(TST_COLOR) $$(basename $(1) .test)" "$(OK_COLOR)$(PASSED_STRING)$(NO_COLOR)\n"   ; \
+fi;
+endef
+
 define run_test_profile
 printf "%b" "\n$(COM_COLOR) Profiling-Test $(TST_COLOR)$$(basename $(1) .test)$(NO_COLOR)\r"; \
 valgrind --leak-check=full $(1) >$(1).log 2>&1 $(1).log; RESULT=$$?; \
@@ -89,7 +97,7 @@ clean:
 # all tests
 test: $(T)
 	@$(eval t := $(patsubst %, $(OUT)/.tests/%, $(T)))
-	@$(foreach tf, $(t), $(call run_test, ./$(tf)))
+	@$(foreach tf, $(t), $(call run_test_print_live, ./$(tf)))
 
 # all tests mem profile
 test-profile: $(T)
@@ -98,7 +106,7 @@ test-profile: $(T)
 
 # specific test
 Test.%: %.test
-	@$(call run_test, ./$(OUT)/.tests/$<)
+	@$(call run_test_print_live, ./$(OUT)/.tests/$<)
 
 # specific test profile
 ProfileTest.%: %.test

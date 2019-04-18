@@ -203,7 +203,7 @@ TEST
 
         server.join();
         client.join();
-
+ 
         // assert
         AssertEqual(msgReadByClient, msgFromServer);
         AssertEqual(msgReadByServer, msgFromClient);

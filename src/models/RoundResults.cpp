@@ -1,7 +1,7 @@
 #include "RoundResults.h"
 
 RoundResults::RoundResults()
-: RoundResults(false, 0., 0, 0, 0)
+: RoundResults(false, 0., (uint32_t)0, (uint32_t)0, (uint32_t)0)
 {}
 
 RoundResults::RoundResults(const std::string& str)
@@ -44,7 +44,7 @@ RoundResults RoundResults::deserialize(const std::string& str)
     try { max = (uint32_t)std::stoul(buff); }
     catch (const std::exception& e){ throw Except("Failed to deserialize [max] field", ___WHERE, "String read: " + buff + "\nInner Exception: " + e.what(), false); }
 
-    return RoundResults(correct, ratio, questions, score, max);
+    return std::move(RoundResults(correct, ratio, questions, score, max));
 }
 
 std::string RoundResults::serialize(void) const
@@ -52,10 +52,10 @@ std::string RoundResults::serialize(void) const
     std::ostringstream oss;
     
     oss << (correct() ? "correct" : "incorrect") << std::endl;
-    oss << ratio() << std::endl;
-    oss << questions() << std::endl;
-    oss << score() << std::endl;
-    oss << max() << std::endl;
+    oss << std::to_string(ratio()) << std::endl;
+    oss << std::to_string(questions()) << std::endl;
+    oss << std::to_string(score()) << std::endl;
+    oss << std::to_string(max()) << std::endl;
     
     return oss.str();
 }
@@ -83,6 +83,19 @@ uint32_t RoundResults::score(void) const
 uint32_t RoundResults::max(void) const
 {
     return _max;
+}
+
+std::string RoundResults::present(void) const
+{
+    std::ostringstream oss;
+
+    oss << (correct() ? "Correct" : "Incorrect") << ". "
+        << (uint32_t)(std::floor(ratio()) * 100)
+        << "% of contestants answered this question correctly." << std::endl
+        << " Your score is " << score() << "/" << questions() << ". "
+        << "The top score is currently " << max() << "/" << questions() << "." << std::endl;
+
+    return oss.str();
 }
 
 std::ostream& operator<<(std::ostream &os, const RoundResults& ref)

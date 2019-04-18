@@ -670,7 +670,7 @@ TEST
             
             Message res(conn.read()); // read response
             AssertEqual(res.type(), 'e'); // response is type error
-            AssertEqual((int)(ProtoError::deserialize(res.body().content()).number()), FAILGT); // the protocol error is type NCKDUP
+            AssertEqual((int)(ProtoError::deserialize(res.body().content()).number()), EMPTYN); // the protocol error is type NCKDUP
         });
 
         // join all threads
@@ -762,6 +762,9 @@ TEST
                 AssertEqual(r1_r_rr.questions(), (uint32_t)1);
                 AssertEqual(r1_r_rr.score(), (uint32_t)1);
                 AssertEqual(r1_r_rr.max(), (uint32_t)1);
+
+
+                conn.write(Message('o',"").serialize()); // ack results
 
             // wait for termination message or next question (in this case, termination)
                 Message t_msg(conn.read());
@@ -866,6 +869,8 @@ TEST
                 AssertEqual(r1_r_rr.score(), (uint32_t)1);
                 AssertEqual(r1_r_rr.max(), (uint32_t)1);
 
+                conn.write(Message('o',"").serialize()); // ack results
+
             // round 2 (indented for clarity)
                 Message r2_q_msg(conn.read());
                 AssertEqual(r2_q_msg.type(), 'u');
@@ -889,6 +894,8 @@ TEST
                 AssertEqual(r2_r_rr.score(), (uint32_t)2);
                 AssertEqual(r2_r_rr.max(), (uint32_t)2);
 
+                conn.write(Message('o',"").serialize()); // ack results
+
             // round 3 (indented for clarity)
                 Message r3_q_msg(conn.read());
                 AssertEqual(r3_q_msg.type(), 'u');
@@ -911,6 +918,8 @@ TEST
                 AssertEqual(r3_r_rr.questions(), (uint32_t)3);
                 AssertEqual(r3_r_rr.score(), (uint32_t)2);
                 AssertEqual(r3_r_rr.max(), (uint32_t)2);
+
+                conn.write(Message('o',"").serialize()); // ack results
 
             // wait for termination message or next question (in this case, termination)
                 Message t_msg(conn.read());
@@ -1019,6 +1028,8 @@ TEST
                 AssertEqual(r1_r_rr.score(), (uint32_t)1);
                 AssertEqual(r1_r_rr.max(), (uint32_t)1);
 
+                conn.write(Message('o',"").serialize()); // ack results
+
             // round 2 (indented for clarity)
                 Message r2_q_msg(conn.read());
                 AssertEqual(r2_q_msg.type(), 'u');
@@ -1042,6 +1053,8 @@ TEST
                 AssertEqual(r2_r_rr.score(), (uint32_t)2);
                 AssertEqual(r2_r_rr.max(), (uint32_t)2);
 
+                conn.write(Message('o',"").serialize()); // ack results
+
             // round 3 (indented for clarity)
                 Message r3_q_msg(conn.read());
                 AssertEqual(r3_q_msg.type(), 'u');
@@ -1064,6 +1077,8 @@ TEST
                 AssertEqual(r3_r_rr.questions(), (uint32_t)3);
                 AssertEqual(r3_r_rr.score(), (uint32_t)2);
                 AssertEqual(r3_r_rr.max(), (uint32_t)2);
+
+                conn.write(Message('o',"").serialize()); // ack results
 
             // wait for termination message or next question (in this case, termination)
                 Message t_msg(conn.read());
@@ -1110,6 +1125,8 @@ TEST
                 AssertEqual(r1_r_rr.score(), (uint32_t)1);
                 AssertEqual(r1_r_rr.max(), (uint32_t)1);
 
+                conn.write(Message('o',"").serialize()); // ack results
+
             // round 2 (indented for clarity)
                 Message r2_q_msg(conn.read());
                 AssertEqual(r2_q_msg.type(), 'u');
@@ -1132,6 +1149,8 @@ TEST
                 AssertEqual(r2_r_rr.questions(), (uint32_t)3);
                 AssertEqual(r2_r_rr.score(), (uint32_t)1);
                 AssertEqual(r2_r_rr.max(), (uint32_t)2);
+
+                conn.write(Message('o',"").serialize()); // ack results
 
             // round 3 (indented for clarity)
                 Message r3_q_msg(conn.read());
@@ -1156,6 +1175,8 @@ TEST
                 AssertEqual(r3_r_rr.score(), (uint32_t)2);
                 AssertEqual(r3_r_rr.max(), (uint32_t)2);
 
+                conn.write(Message('o',"").serialize()); // ack results
+
             // wait for termination message or next question (in this case, termination)
                 Message t_msg(conn.read());
                 AssertEqual(t_msg.type(), 't');
@@ -1170,7 +1191,7 @@ TEST
 
     ENDCASE,
 
-    CASE("playRound_twoContestantsThreeRounds20Times") // abusing timing issues
+    CASE("playRound_twoContestantsThreeRounds5Times") // abusing timing issues
     for(size_t i = 0; i < 5; i++) {
         // SUMMARY
         //      GIVEN A contest session on any given port with three questions
@@ -1270,6 +1291,8 @@ TEST
                     AssertEqual(r1_r_rr.score(), (uint32_t)1);
                     AssertEqual(r1_r_rr.max(), (uint32_t)1);
 
+                    conn.write(Message('o',"").serialize()); // ack results
+
                 // round 2 (indented for clarity)
                     Message r2_q_msg(conn.read());
                     AssertEqual(r2_q_msg.type(), 'u');
@@ -1293,6 +1316,8 @@ TEST
                     AssertEqual(r2_r_rr.score(), (uint32_t)2);
                     AssertEqual(r2_r_rr.max(), (uint32_t)2);
 
+                    conn.write(Message('o',"").serialize()); // ack results
+
                 // round 3 (indented for clarity)
                     Message r3_q_msg(conn.read());
                     AssertEqual(r3_q_msg.type(), 'u');
@@ -1315,6 +1340,8 @@ TEST
                     AssertEqual(r3_r_rr.questions(), (uint32_t)3);
                     AssertEqual(r3_r_rr.score(), (uint32_t)2);
                     AssertEqual(r3_r_rr.max(), (uint32_t)2);
+
+                    conn.write(Message('o',"").serialize()); // ack results
 
                 // wait for termination message or next question (in this case, termination)
                     Message t_msg(conn.read());
@@ -1366,6 +1393,8 @@ TEST
                     AssertEqual(r1_r_rr.score(), (uint32_t)1);
                     AssertEqual(r1_r_rr.max(), (uint32_t)1);
 
+                    conn.write(Message('o',"").serialize()); // ack results
+
                 // round 2 (indented for clarity)
                     Message r2_q_msg(conn.read());
                     AssertEqual(r2_q_msg.type(), 'u');
@@ -1389,6 +1418,8 @@ TEST
                     AssertEqual(r2_r_rr.score(), (uint32_t)1);
                     AssertEqual(r2_r_rr.max(), (uint32_t)2);
 
+                    conn.write(Message('o',"").serialize()); // ack results
+
                 // round 3 (indented for clarity)
                     Message r3_q_msg(conn.read());
                     AssertEqual(r3_q_msg.type(), 'u');
@@ -1411,6 +1442,8 @@ TEST
                     AssertEqual(r3_r_rr.questions(), (uint32_t)3);
                     AssertEqual(r3_r_rr.score(), (uint32_t)2);
                     AssertEqual(r3_r_rr.max(), (uint32_t)2);
+
+                    conn.write(Message('o',"").serialize()); // ack results
 
                 // wait for termination message or next question (in this case, termination)
                     Message t_msg(conn.read());
@@ -1553,6 +1586,8 @@ TEST
                         AssertEqual(rr.questions(), (uint32_t)qs.size());
                         AssertEqual(rr.score(), scores[(uint32_t)i]);
                         AssertEqual(rr.max(), (uint32_t)max);
+
+                        conn.write(Message('o',"").serialize()); // ack results
                     }
 
                     // wait for termination message or next question (in this case, termination)
@@ -1573,11 +1608,14 @@ TEST
     ENDCASE,
 
     CASE("playRound_30Contestants8RoundsRandTiming") // abusing timing issues
-    while(true){
         // SUMMARY
         //      GIVEN A contest session on any given port with 8 questions
         //      WHEN  Join 30 contestants before timeout
         //      THEN  The 30 contestants can play for 8 rounds round
+        std::cout << __MAG__;
+        std::cout << "\n" << "This tests outputs the process to standard output\n"
+                          << "A large number of contestants will randomly time\n"
+                          << "when they will join and when they will answer questions...\n\n" << std::flush;
 
         std::map<uint32_t, SolvedQuestion> qs;
         qs.emplace(q1_Id, q1);
@@ -1600,11 +1638,11 @@ TEST
         round_correct.emplace(q7_Id, 0);
         round_correct.emplace(q8_Id, 0);
 
-        for(size_t questions_repeated = 9; questions_repeated < 100; questions_repeated++)
+        /*for(size_t questions_repeated = 9; questions_repeated < 100; questions_repeated++)
         {
             qs.emplace((uint32_t)questions_repeated, q8);
             round_correct.emplace((uint32_t)questions_repeated, 0);
-        }
+        }*/
 
         size_t timeout = 20;
         std::vector<std::string> names = ____name_set;
@@ -1636,8 +1674,8 @@ TEST
 
                 std::vector<std::string> namesRead = cs.getNames();
                 std::sort(namesRead.begin(), namesRead.end());
-                //AssertEqual(namesRead.size(), (size_t)contestants);
-                //AssertEqual(namesRead, names);
+                AssertEqual(namesRead.size(), (size_t)contestants);
+                AssertEqual(namesRead, names);
                 
                 for(auto& q : qs)
                 {
@@ -1651,10 +1689,10 @@ TEST
                 AssertEqual(cs.getState(), TERMINATED);
                 ContestStats stats = cs.getStats();
                 //AssertEqual(stats.average(), overallAvgTotal/contestants); // TODO CALCULATE
-                //AssertEqual(stats.contestants(), (uint32_t)contestants);
-                //AssertEqual((uint32_t)stats.questions(), (uint32_t)qs.size());
+                AssertEqual(stats.contestants(), (uint32_t)contestants);
+                AssertEqual((uint32_t)stats.questions(), (uint32_t)qs.size());
                 //AssertEqual(stats.max(), (uint32_t)overallMax);
-                //AssertEqual(stats.highest(), max);
+                AssertEqual(stats.highest(), max);
             } catch(const std::exception& e) {
                 std::cout << "Exception in contest session thread : " << e.what() << std::endl;
             }
@@ -1678,7 +1716,7 @@ TEST
                     conn.Connect(sessionHost);
                     conn.write(Message('n', Body("contestant\n" + names[i] + "\n")).serialize());
                     Message res(conn.read());
-                    //AssertEqual(res.type(), 'o'); // the response should be OK
+                    AssertEqual(res.type(), 'o'); // the response should be OK
                     std::cout << "Contestant " << i << "(" << names[i] << ")" << " joined! " << std::endl;
 
                     // logged in ... now wait for question
@@ -1686,21 +1724,19 @@ TEST
                     {
                         // read the question's message
                         Message q_msg(conn.read());
-                        //AssertEqual(q_msg.type(), 'u');
+                        AssertEqual(q_msg.type(), 'u');
                         // question deserialized
                         Question q(q_msg.body().content());
-                        //AssertEqual(q, qs.at((uint32_t)round).getQuestion());
+                        AssertEqual(q, qs.at((uint32_t)round).getQuestion());
                         // respond randomly right or wrong
                         int wrong = UniformRandom(0,1).generate(); // 0 not wrong, 1 wrong
                         
-                        //uint32_t localmax;
                         if(!wrong) 
                         {
                             std::unique_lock<std::mutex> l(round_correct_mutex);
                             scores[(uint32_t)i]++;
                             round_correct[(uint32_t)round]++;
                             max = *(std::max_element(scores.begin(), scores.end()));
-                            //localmax = max;
                         }
 
                         //wait random time before responding (1...5 seconds)
@@ -1710,25 +1746,26 @@ TEST
                         
                         conn.write(Message('u', std::string(1, char(qs.at((uint32_t)round).getSolution()+wrong))).serialize());
                         std::cout << "Contestant " << i << "(" << names[i] << ")" << " answered round " << round << std::endl;
-
                         std::cout << "Contestant " << i << "(" << names[i] << ")" << " reading results for round " << round << std::endl;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(300));
                         // read round response
                         Message res(conn.read());
-                        //AssertEqual(res.type(), 'u');
+                        std::cout << "Contestant " << i << "(" << names[i] << ")" << " read results for round " << round << std::endl;
+                        AssertEqual(res.type(), 'u');
                         // round results
-                        //RoundResults rr;
-                        //AssertNotExcept(rr = RoundResults::deserialize(res.body().content()));
-                        //AssertEqual(rr.correct(), (!wrong));
-                        //AssertEqual(rr.ratio(), double((double)round_correct[(uint32_t)round] / (double)contestants));
-                        //AssertEqual(rr.questions(), (uint32_t)qs.size());
-                        //AssertEqual(rr.score(), scores[(uint32_t)i]);
+                        RoundResults rr;
+                        AssertNotExcept(rr = RoundResults::deserialize(res.body().content()));
+                        AssertEqual(rr.correct(), (!wrong));
+                        AssertEqual(rr.ratio(), double((double)round_correct[(uint32_t)round] / (double)contestants));
+                        AssertEqual(rr.questions(), (uint32_t)qs.size());
+                        AssertEqual(rr.score(), scores[(uint32_t)i]);
                         //AssertEqual(rr.max(), (uint32_t)localmax);
+
+                        conn.write(Message('o',"").serialize());
                     }
 
                     // wait for termination message or next question (in this case, termination)
                     Message t_msg(conn.read());
-                    //AssertEqual(t_msg.type(), 't');
+                    AssertEqual(t_msg.type(), 't');
                     conn.write(Message('o', "").serialize());
                 } catch(const std::exception& e) {
                     std::cout << "Exception in client thread " << i << " : " << e.what() << std::endl;
@@ -1739,7 +1776,6 @@ TEST
         for(auto& c_th : contestant_threads)
             if(c_th.joinable()) c_th.join();
         if (cs.joinable()) cs.join();
-    }
     ENDCASE
 
 ENDTEST
