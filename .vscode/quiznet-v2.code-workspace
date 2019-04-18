@@ -57,7 +57,9 @@
 			"string": "cpp",
 			"cstdarg": "cpp",
 			"cinttypes": "cpp",
-			"algorithm": "cpp"
+			"algorithm": "cpp",
+			"filesystem": "cpp",
+			"codecvt": "cpp"
 		},
 		"C_Cpp.intelliSenseCacheSize": 100,
 		"cSpell.words": [

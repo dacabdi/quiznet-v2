@@ -35,6 +35,17 @@
             "options": {
                 "cwd": "${workspaceFolder}"
             }
+        },
+        {
+            "label": "Build Debug App",
+            "type": "shell",
+            "command": "make",
+            "args":["MODE=debug", "${input:appPick}.app"],
+            "problemMatcher": [],
+            "group" : "test",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
         }
     ],
     "inputs":[
@@ -43,7 +54,14 @@
             "description": "Select a test",
             "default": "none",
             "type": "pickString",
-            "options": ["Unit-Contest", "Funct-ContestantClient", "Funct-ContestSession", "Unit-Message", "Unit-Body", "Unit-Host", "Unit-TcpSocket", "Funct-TcpSocket"]
+            "options": ["Funct-ContestServer", "Unit-Contest", "Funct-ContestantClient", "Funct-ContestSession", "Unit-Message", "Unit-Body", "Unit-Host", "Unit-TcpSocket", "Funct-TcpSocket"]
+        },
+        {
+            "id": "appPick",
+            "description": "Select an app",
+            "default": "none",
+            "type": "pickString",
+            "options": ["contestmeister"]
         }
     ],
 }

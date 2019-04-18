@@ -1,7 +1,8 @@
-#include "ContestServer.h"
-#include "QuizBook.h"
+#include "ContestmeisterClient.h"
+#include "Host.h"
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <stdexcept>
 #include <sstream>
@@ -10,54 +11,50 @@
 #include <unistd.h>     /* for getopt       */
 #include <getopt.h>     /* for getopt_long  */
 
-#define NON_OPTIONAL_PARAMS 0
+#define NON_OPTIONAL_PARAMS 2
 
 namespace constants {
-    static const char        *optString = ":p:vh"; // options's string
+    static const char        *optString = ":f:hv"; // options's string
     static const std::string  usage(
-    "USAGE  : cserver [OPTIONS]\n"
+    "USAGE  : contestmeister TARGETHOST PORT [OPTIONS]\n"
     "         Please notice that unless POSIXLY_CORRECT is set,\n"
     "         options will be taken in any order.\n\n"
-    "DESC   : cserver runs the QuizNet Contest Server on a port\n"
-    "         assigned by the OS or specified by the user using\n"
-    "         the option -p PORT (--port=PORT). Once the server\n"
-    "         is up, it will report the port it is bound to, use\n"
-    "         this value for client's reference\n\n"
-    "OPTIONS:\n\n"
-    "  -p --port=PORT                port to run on, 0 by default to let\n"
-    "                                the OS randomly assign a free port\n"
-    "                                with -l=yes (--log=yes), disabled by default\n"
-    "  -h --help                     display usage help and exit\n");
+    "DESC   : contestmeister runs the QuizNet\nContestmeister client pointing\n"
+    "         to server TARGETHOST:PORT\n\n"
+    "OPTIONS:\n"
+    " -f --file filename       run in non-interactive mode\n"
+    " -h --help                display usage help and exit\n"
+    " -v --version             display version and exit\n");
     static const std::string welcome(
     "\n\n/==============================================\\\n"
-        "|          QuizNet Contest Server v2.0         |\n"
+        "|          QuizNet Contestmeister v2.0         |\n"
        "\\==============================================/\n");
     static const std::string version(
-        "qserver v1.0\n"
-        "QuizNet Contest Server Application\n"
+        "contestmeister v1.0\n"
+        "QuizNet Contestmeister Application\n"
         "Written by David Cabrera @ dacabdi89@ufl.edu\n"
         "University of Florida, CISE Department\n"
         "Networking Fundamentals, Spring 2019\n"
-        "Project 2 (server application)\n"
+        "Project 2 (contestmeister client application)\n"
     );
 }
 
 struct {
     // program flags and parameters
-    int         flagDisplayHelp   = 0                  ;  // display help and exit
-    int         flagDisplayVer    = 0                  ;  // display version and exit
-    int         flagLog           = 1                  ;  // log activity
-    int         flagVerbose       = 0                  ;  // verbose (display req and res)
-    uint16_t    paramPort         = 0 ;                   // port to run server
+    int         flagDisplayHelp   = 0 ;  // display help and exit
+    int         flagDisplayVer    = 0 ;
+    std::string paramTargetHost   = "";  // server's ip or hostname 
+    uint16_t    paramTargetPort   = 0 ;  // server's port   
+    int         useFile           = 0 ;  // use file input
+    std::string inputFile         = "";
 } globalParams;
 
 static struct option longOptions[] = { // program's long options --option
-//  { "option"   , argument-req      , &flag-to-set                  , v }
-    { "port"     , required_argument , NULL                          , 1 },
-    { "log"      , required_argument , NULL                          , 1 },
-    { "version"  , no_argument       , &globalParams.flagDisplayVer  , 1 },
-    { "help"     , no_argument       , &globalParams.flagDisplayHelp , 1 },
-    { NULL       , no_argument       , NULL                          , 0 }
+//  { "optionname"   , argument-req, &flag-to-set                   , v }
+    { "version"      , no_argument       , &globalParams.flagDisplayVer   , 1 },
+    { "help"         , no_argument       , &globalParams.flagDisplayHelp  , 1 },
+    { "file"         , required_argument , &globalParams.useFile          , 1 },
+    { NULL           , no_argument       , NULL                           , 0 }
 };
 
 void displayUsage(void)
@@ -74,16 +71,13 @@ std::string displayInitSettings(void)
 {
     std::ostringstream oss;
 
-    // port parameter
-    std::string paramPortString = 
-    (globalParams.paramPort == 0 ? "Any" : 
-    std::to_string(globalParams.paramPort));
-
-    oss 
-    << "\n\n------------ Initialization settings" 
-    <<     "-----------\n\n"
-    << "\tPort       : "   << paramPortString << "\n"
-    << std::flush;
+    oss << "\n\n------------ Initialization settings" 
+        <<     "-----------\n" << std::endl;
+    
+    oss << "\tTarget host : " 
+        << globalParams.paramTargetHost << std::endl;
+    oss << "\tTarget port : "
+        << globalParams.paramTargetPort << std::endl;
 
     return oss.str();
 }
@@ -95,7 +89,7 @@ uint16_t parsePortNumber(const char * const arg)
         return (uint16_t)std::stoul(arg);
         // ^ TODO, ensure 16-bits unsigned value (0 to 65535) 
     } catch (const std::exception& e) {
-        std::cerr << "ERROR  : PORT parameter is not a valid port number: " 
+        std::cerr << "ERROR: PORT parameter is not a valid port number: " 
                   << arg;
         std::cerr << std::endl;
 
@@ -143,7 +137,7 @@ int main(int argc, char * const argv[])
         {
             case '?' : 
                 
-                std::cerr << "ERROR  : Cannot recognize option : ";
+                std::cerr << "ERROR  : Cannot recognize option. ";
                 std::cerr << "(" 
                           << argv[(optind_moved ? optind-1 : optind)] 
                           << ")\n" << std::endl;
@@ -154,39 +148,24 @@ int main(int argc, char * const argv[])
             break;
 
             case ':' :
-
                 // missing argument
-                std::cerr << "ERROR  : Missing argument for option : ";
-                std::cerr << "(" << argv[optind-1] << ")\n" << std::endl;
-                displayUsage();
-                exit(EXIT_FAILURE);
-
             break; 
 
-            case 'p' :
-
-                globalParams.paramPort = parsePortNumber(optarg);
-
-            break;
-
             case 'h' : // help
-
                 displayUsage();
                 exit(EXIT_SUCCESS);
-            
-            break;
-
-            case 1 : 
-
-                // long options with NULL flag
-                if(        strcmp("port"    , longOptions[optionIndex].name ) == 0)
-                    globalParams.paramPort = parsePortNumber(optarg);
-            
             break;
 
             case 'v' : // version
                 displayVersion();
                 exit(EXIT_SUCCESS);
+            break;
+
+            case 'f' : // version
+
+                globalParams.useFile = 1;
+                globalParams.inputFile = optarg;
+
             break;
 
             case 0 : // for long options
@@ -205,24 +184,88 @@ int main(int argc, char * const argv[])
         }
     }
 
-    std::cout << constants::welcome << std::endl;
-    std::cout << displayInitSettings() << std::endl;
+    // since getopt permuted the non-option
+    // arguments to the end, we can read them
+    // after the last option indices
+    if (optind > (argc - NON_OPTIONAL_PARAMS))
+    {
+        std::cerr << "ERROR  : Missing target server arguments.\n" 
+                  << std::endl;
 
-    Host host("", std::to_string(globalParams.paramPort));
+        displayUsage();
+
+        exit(EXIT_FAILURE);
+    }
+
+    // get host (must be a hostname or ip-address, ipv4)
+    globalParams.paramTargetHost = argv[optind++];
+    // get port (must be a 16 bits number, TODO: enforce uint16_t)
+    globalParams.paramTargetPort = parsePortNumber(argv[optind]);
+
+//--------------------MAIN-PROGRAM----------------------------------------
     
-    QuizBook qb;
-    qb.clear();
+    std::cout << constants::welcome     << std::flush;
+    std::cout << displayInitSettings()  << std::flush;
 
-    ContestServer server(qb, host);
-    server.SetLogger([&](std::string str){
-        std::cout << str << std::flush;
-    });
-    
-    // now RUN!
-    server.run();
+    // build a host object
+    Host host(globalParams.paramTargetHost, std::to_string(globalParams.paramTargetPort));
 
-    // be polite
-    std::cout << "\nServer application out!\nBh-Bh-Bye! :( \n" << std::endl;
+    if(globalParams.useFile)
+    {
+        std::ifstream input_file(globalParams.inputFile);
+        ContestmeisterClient client(host, input_file);
+        client.run();
+        input_file.close();
+    }
+    else
+    {
+        ContestmeisterClient client(host);
+        client.run();
+    }
+
+    // ...be polite
+    std::cout << "\nBh-Bh-Bye! :( \n" << std::endl;
 
     exit(EXIT_SUCCESS);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#include <iostream>
+
+int main()
+{
+    Host host("localhost", "3360");
+    ContestmeisterClient client(host);
+    client.run();
+    return 0;
 }

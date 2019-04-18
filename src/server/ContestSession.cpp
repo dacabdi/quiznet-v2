@@ -1,6 +1,6 @@
 #include "ContestSession.h"
 
-ContestSession::ContestSession(const questions_set& questions)
+ContestSession::ContestSession(const questions_set questions)
 : _sock(TcpSocket()), _sq(questions), _max((uint32_t)0), _state(INVALID)
 {
     _sock.Bind();

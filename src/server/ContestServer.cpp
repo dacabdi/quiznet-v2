@@ -8,6 +8,7 @@ ContestServer::ContestServer(QuizBook& qb, Host host)
     _qb.onClear  = [&](QuizBook&) { writeQuestions(); };
     
     loadContests();
+    initHandlers();
 }
 
 void ContestServer::SetLogger(logger log)
@@ -22,26 +23,41 @@ void ContestServer::run(void)
     
     _log("Server is listening on: " + _host.fullName());
 
-    while(true)
+    _reqkill = false;
+    while(!_reqkill)
     {
         try
         {
             // handle connection
             TcpSocket clientSock = _sock.Accept();
-            _log("Incoming connection from: " + _sock.peer().fullName());
+            _log("Incoming client connection from: " + clientSock.peer().fullName());
             
-            std::thread accepting_thread([&](TcpSocket clientSock) 
+            std::thread client_thread([&](TcpSocket clientSock) 
             {
-                if(!handshake(clientSock)) return; // failed to handshake
-                requestLoop(clientSock);
+                try {
+                    if(!handshake(clientSock)) return; // failed to handshake
+                    _log("Client " + clientSock.peer().fullName() + " finished handshake succesfully");
+                    requestLoop(clientSock);
+                } catch (const std::exception& e) {
+                    _log("Client " + clientSock.peer().fullName() + " dropped on error...");
+                    _log("{\033[35m" + std::string(e.what()) + "\033[0m}");
+                }
             }, 
             std::move(clientSock));
-        } 
+            client_thread.detach();
+        }
         catch (const Except& e ) 
         {
-            if     (e.Errno == EINVAL) break;;
-            else if(e.Errno == ECONNRESET) continue; // absorb and ignore
-            else throw e;
+            if     (e.Errno == EINVAL) break;
+            else {
+                _log("\nERROR {\033[35m\n" + std::string(e.what()) + "\033[0m}");
+                continue;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            _log("\nERROR {\033[35m\n" + std::string(e.what()) + "\033[0m}");
+            continue;
         }
     }
 
@@ -54,7 +70,7 @@ bool ContestServer::handshake(TcpSocket& conn)
     std::string msg_str = conn.read();
     Message msg(msg_str);
 
-    if(msg.type() != 'n' || msg.body().content() == "contestmeister\n")
+    if(msg.type() != 'n' || msg.body().content() != "contestmeister\n")
         return false;
 
     // ack handshake
@@ -74,13 +90,12 @@ void ContestServer::requestLoop(TcpSocket& conn)
 
         try { // client could drop dead or send problematic data
             std::string req_str = conn.read();
-            Message req_msg;
-        } catch (const Except& e) { 
-            break;
+            if(req_str.size() == 0) throw Except("Client dropped.", ___WHERE, "", false);
+            req_msg = Message(req_str);
         } catch (const ProtoExcept& e) {
+            _log("\nERROR {\n" + std::string(e.what()) + "}");
             res_msg = Message('e', e.Error.serialize());
-            try { conn.write(res_msg.serialize()); }
-            catch (const Except& e) { break; } // could not send error message
+            conn.write(res_msg.serialize());
             continue;
         }
         
@@ -89,16 +104,14 @@ void ContestServer::requestLoop(TcpSocket& conn)
             res_msg = (_handlers.at(req_msg.type()))(req_msg, leave);
         else {
             ProtoError err(UNKREQ, "Request received:" + req_msg.serialize());
-            try { conn.write(res_msg.serialize()); }
-            catch (const Except& e) { break; } // could not send error message
+            conn.write(res_msg.serialize());
             continue;
         }
 
-        try { conn.write(res_msg.serialize()); }
-        catch (const Except& e) { break; } // could not send error message
+        conn.write(res_msg.serialize()); 
     }
 
-    _log("Client is done!");
+    _log("Client " + conn.peer().fullName() + " left");
 }
 
 void ContestServer::initHandlers(void)
@@ -113,11 +126,11 @@ void ContestServer::initHandlers(void)
         try {
             uint32_t id = (uint32_t)std::stoul(id_buff);
             if(_qb.hasQuestion(id))
-                return Message('e', ProtoError(USEDID, id_buff).serialize());
+                return Message('e', ProtoError(USEDID, "Error: question number " + std::to_string(id) + " already used").serialize());
             id = _qb.insertQuestion(id, SolvedQuestion(iss));
             return Message('o', "Question " + std::to_string(id) + " added");
         } catch (const Except& e) {
-            return Message('e', ProtoError(MALQUE, e.what()).serialize());
+            return Message('e', ProtoError(MALQUE, std::string("Unkown Error:") + e.what()).serialize());
         }
     });
 
@@ -125,14 +138,13 @@ void ContestServer::initHandlers(void)
     _handlers.emplace('d', [&](const Message& request, bool &leave) -> Message
     {
         std::string content = request.body().content();
+        uint32_t id;
         try {
-            uint32_t id = (uint32_t)std::stoul(content);
+            id = (uint32_t)std::stoul(content);
             _qb.deleteQuestionById(id);
             return Message('o', "Deleted question " + std::to_string(id));
         } catch (const Except& e) {
-            return Message('e', ProtoError(NOTFND, 
-            "Question id provided {" + utils::escape(content) + "}\n"+
-            "Internal Exception: " + std::string(e.what())).serialize());
+            return Message('e', ProtoError(NOTFND, "Error: question " + std::to_string(id) + " not found").serialize());
         } catch (const std::exception& e) {
             return Message('e', ProtoError(UNKERR, 
             "Question id provided {" + utils::escape(content) + "}\n"+
@@ -144,14 +156,13 @@ void ContestServer::initHandlers(void)
     _handlers.emplace('g', [&](const Message& request, bool &leave) -> Message
     {   
         std::string content = request.body().content();
+        uint32_t id;
         try {
-            uint32_t id = (uint32_t)std::stoul(content);
+            id = (uint32_t)std::stoul(content);
             SolvedQuestion q = _qb.getQuestionById(id);
             return Message('o', q.serialize());
         } catch (const Except& e) {
-            return Message('e', ProtoError(NOTFND, 
-            "Question id provided {" + utils::escape(content) + "}\n"+
-            "Internal Exception: " + std::string(e.what())).serialize());
+            return Message('e', ProtoError(NOTFND, "Error: question " + std::to_string(id) + " not found").serialize());
         } catch (const std::exception& e) {
             return Message('e', ProtoError(UNKERR, 
             "Question id provided {" + utils::escape(content) + "}\n"+
@@ -162,7 +173,7 @@ void ContestServer::initHandlers(void)
     // q -> quit client
     _handlers.emplace('q', [&](const Message& request, bool &leave) -> Message
     {
-        _log("Client requested to disconnect.\n");
+        _log("Client requested to disconnect");
         leave = true;
         return Message('o', "");
     });
@@ -170,9 +181,10 @@ void ContestServer::initHandlers(void)
     // k -> kill server client
     _handlers.emplace('k', [&](const Message& request, bool &leave) -> Message
     {
-        _log("Server received a kill request.\n");
+        _log("Server received a kill request.");
         leave = true;
         _reqkill = true;
+        _sock.Shutdown();
         return Message('o', "");
     });
 
@@ -215,7 +227,7 @@ void ContestServer::initHandlers(void)
             SolvedQuestion q = _qb.getQuestionById(qid);
             _contests.at(cid).addQuestion(qid, q);
 
-            return Message('o', "");
+            return Message('o', "Added question " + std::to_string(qid) + " to contest " + std::to_string(cid));
         } catch (const std::exception& e) {
             return Message('e', ProtoError(UNKERR, 
             "Question id provided {" + utils::escape(content.str()) + "}\n"+
@@ -242,12 +254,16 @@ void ContestServer::initHandlers(void)
             
             std::thread th([&](ContestSession * cs, uint32_t id) -> void
             {
-                cs->run();
+                _log(response);
+                uint16_t port = cs->getSocket().local().port();
+                cs->run(3); // TODO put back to one minute!
+                _log("Contest " + std::to_string(cid) + " ended on port " + std::to_string(port));
                 ContestStats stats = cs->getStats();
                 _contests.at(id).setRun();
                 _contests.at(id).setStats(stats);
                 writeContests();
                 delete cs;
+                _log("Thread for contest " + std::to_string(cid) + " on port " + std::to_string(port) + " is being collected");
             }, contest_session, cid);
 
             th.detach();
@@ -282,17 +298,25 @@ void ContestServer::initHandlers(void)
 void ContestServer::loadContests(void)
 {
     std::ifstream file(___CONTESTS_BANK);
-    while(!file.eof())  {
+
+    size_t n = 0;
+    file >> n;
+    
+    for(size_t i = 0; i < n; ++i)
+    {
         Contest contest = Contest::deserialize(file);
         _contests.emplace(contest.getId(), contest);
     }
+
     file.close();
 }
         
 void ContestServer::writeContests(void)
 {
     std::ofstream file(___CONTESTS_BANK, std::ios::out);
-    for(auto& c : _contests) file << c.second.serialize();
+    file << _contests.size() << std::endl;
+    for(auto& c : _contests) 
+        file << c.second.serialize();
     file.close();
 }
 

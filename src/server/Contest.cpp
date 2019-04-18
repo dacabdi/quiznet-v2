@@ -117,7 +117,8 @@ std::string Contest::presentFull(void) const
     std::ostringstream oss;
 
     oss << presentHeadline();
-    for(auto& q : _questions)
+    
+    if(_run) for(auto& q : _questions)
         oss << "\t" << q.first << "\t" << _stats.percentage(q.first) << std::endl;
 
     return oss.str();

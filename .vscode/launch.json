@@ -6,7 +6,14 @@
             "description": "Select a test",
             "default": "none",
             "type": "pickString",
-            "options": ["Unit-Contest", "Funct-ContestantClient", "Funct-ContestSession", "Unit-Message", "Unit-Body", "Unit-Host", "Unit-TcpSocket", "Funct-TcpSocket"]
+            "options": ["Funct-ContestServer", "Unit-Contest", "Funct-ContestantClient", "Funct-ContestSession", "Unit-Message", "Unit-Body", "Unit-Host", "Unit-TcpSocket", "Funct-TcpSocket"]
+        },
+        {
+            "id": "appPick",
+            "description": "Select an app",
+            "default": "none",
+            "type": "pickString",
+            "options": ["contestmeister"]
         }
     ],
     "configurations": [
@@ -28,6 +35,25 @@
                 "ignoreFailures": true
             }],
             "preLaunchTask": "Build Debug Test"
+        },
+        {
+            "name": "Debug App",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/debug/${input:appPick}.app",
+            "args": [],
+            "stopAtEntry": false,
+            "miDebuggerPath": "gdb",
+            "cwd": "${workspaceFolder}/bin/debug/",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "launchCompleteCommand": "exec-run",
+            "setupCommands": [{
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            }],
+            "preLaunchTask": "Build Debug App"
         }
     ]
 }

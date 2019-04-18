@@ -42,7 +42,7 @@ class ContestSession
 {
     public:
 
-        ContestSession(const questions_set&);
+        ContestSession(const questions_set);
         
         ContestStats run(const size_t timeout = 60); // in seconds
 
@@ -62,7 +62,7 @@ class ContestSession
     protected:
 
         TcpSocket             _sock;    // contest socket
-        const questions_set & _sq;      // question set reference
+        const questions_set   _sq;      // question set reference
         scores_set            _stats;   // questions statistics
         contestants_set       _contestants; std::mutex _contestants_mutex;
         uint32_t              _max = 0; // max score

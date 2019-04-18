@@ -12,6 +12,7 @@
 #include "ProtoExcept.h"
 #include "Contest.h"
 #include "Utils.h"
+#include "Common.h"
 
 #include <mutex>
 #include <thread>

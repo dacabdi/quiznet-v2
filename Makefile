@@ -87,7 +87,7 @@ T   := $(T:.cpp=.test)
 A   := $(shell find $(APP)/* -type f -name "*.cpp" -exec basename {} \;)
 A   := $(T:.cpp=.app)
 
-all : clean $(O)
+all : $(O) clean contestmeister.app server.app contestant.app
 	@echo "Done!"
 
 clean:
@@ -130,3 +130,4 @@ ProfileTest.%: %.test
 	@$(eval o := $(foreach fn,$*.o $(O),$(shell find $(OBJ)/* -type f -name "$(fn)")))
 	@$(call compile_and_test, $(CC) $(EXTF) $(CFLAGS) $(I) -o $(OUT)/$*.app $(o), $(LNK_STRING))
 	@chmod +x $(OUT)/$*.app
+	@link -s -T $(OUT)/$*.app $*
