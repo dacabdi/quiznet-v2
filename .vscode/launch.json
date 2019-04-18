@@ -13,7 +13,7 @@
             "description": "Select an app",
             "default": "none",
             "type": "pickString",
-            "options": ["contestmeister"]
+            "options": ["cserver","contestant","contestmeister"]
         }
     ],
     "configurations": [

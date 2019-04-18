@@ -4,6 +4,47 @@
 
 #include <thread>
 
+/*
+
+p 3
+presidents, US history
+Which is the first president of the USA
+.
+(a) Thomas Jefferson
+.
+(b) Abraham Lincoln
+.
+(c) George Washington
+.
+(d) Benjamin Franklin
+.
+.
+c
+p 6
+network, protocols,layered
+Which of these protocols guarantee delivery"
+.
+(a) TCP
+.
+(b) UDP
+.
+.
+a
+p 2
+network, protocols,layered
+Which of these protocols does 
+not provide flow control"
+.
+(a) TCP
+.
+(b) UDP
+.
+.
+b
+
+*/
+
+
 TEST
 
     CASE("createServer")
@@ -23,7 +64,7 @@ TEST
             server.run();
         });
         
-        /*std::thread client_1_thread([&]{
+        std::thread client_1_thread([&]{
             std::this_thread::sleep_for(std::chrono::seconds(2));
             ContestmeisterClient client(Host("localhost", "3360"));
             client.run();

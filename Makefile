@@ -87,12 +87,15 @@ T   := $(T:.cpp=.test)
 A   := $(shell find $(APP)/* -type f -name "*.cpp" -exec basename {} \;)
 A   := $(T:.cpp=.app)
 
-all : $(O) clean contestmeister.app server.app contestant.app
+all : clean $(O) contestmeister.app cserver.app contestant.app
 	@echo "Done!"
 
 clean:
 	@echo " \033[0;33mCleaning up...\033[m"
+	@echo " \033[0;33mRemoving binaries...\033[m"
 	@rm -rf $(BIN)
+	@echo " \033[0;33mRemoving links...\033[m"
+	@rm -rf contestant contestmeister cserver
 
 # all tests
 test: $(T)
@@ -130,4 +133,5 @@ ProfileTest.%: %.test
 	@$(eval o := $(foreach fn,$*.o $(O),$(shell find $(OBJ)/* -type f -name "$(fn)")))
 	@$(call compile_and_test, $(CC) $(EXTF) $(CFLAGS) $(I) -o $(OUT)/$*.app $(o), $(LNK_STRING))
 	@chmod +x $(OUT)/$*.app
-	@link -s -T $(OUT)/$*.app $*
+	@rm -rf $*
+	@ln -s -T $(OUT)/$*.app $*

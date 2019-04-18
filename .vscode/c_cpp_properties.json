@@ -10,7 +10,7 @@
                 "${workspaceFolder}/include/tests",
                 "${workspaceFolder}/include/misc",
                 "${workspaceFolder}/include/models",
-                "${workspaceFolder}/include/server",
+                "${workspaceFolder}/include/cserver",
                 "${workspaceFolder}/include/contestant",
                 "${workspaceFolder}/include/contestmeister"
             ],

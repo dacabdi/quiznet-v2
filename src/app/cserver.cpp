@@ -26,14 +26,14 @@ namespace constants {
     "OPTIONS:\n\n"
     "  -p --port=PORT                port to run on, 0 by default to let\n"
     "                                the OS randomly assign a free port\n"
-    "                                with -l=yes (--log=yes), disabled by default\n"
-    "  -h --help                     display usage help and exit\n");
+    "  -h --help                     display usage help and exit\n"
+    "  -v --version                  display version information and exit");
     static const std::string welcome(
     "\n\n/==============================================\\\n"
         "|          QuizNet Contest Server v2.0         |\n"
        "\\==============================================/\n");
     static const std::string version(
-        "qserver v1.0\n"
+        "cserver v2.0\n"
         "QuizNet Contest Server Application\n"
         "Written by David Cabrera @ dacabdi89@ufl.edu\n"
         "University of Florida, CISE Department\n"
@@ -53,8 +53,6 @@ struct {
 
 static struct option longOptions[] = { // program's long options --option
 //  { "option"   , argument-req      , &flag-to-set                  , v }
-    { "port"     , required_argument , NULL                          , 1 },
-    { "log"      , required_argument , NULL                          , 1 },
     { "version"  , no_argument       , &globalParams.flagDisplayVer  , 1 },
     { "help"     , no_argument       , &globalParams.flagDisplayHelp , 1 },
     { NULL       , no_argument       , NULL                          , 0 }
@@ -179,7 +177,7 @@ int main(int argc, char * const argv[])
             case 1 : 
 
                 // long options with NULL flag
-                if(        strcmp("port"    , longOptions[optionIndex].name ) == 0)
+                if(strcmp("port", longOptions[optionIndex].name ) == 0)
                     globalParams.paramPort = parsePortNumber(optarg);
             
             break;
@@ -208,14 +206,17 @@ int main(int argc, char * const argv[])
     std::cout << constants::welcome << std::endl;
     std::cout << displayInitSettings() << std::endl;
 
-    Host host("", std::to_string(globalParams.paramPort));
+    // listen on port PORT, all interfaces
+    std::string allIfaces = "0.0.0.0";
+    std::string port = std::to_string(globalParams.paramPort);
+    Host host(allIfaces, port);
     
     QuizBook qb;
     qb.clear();
 
     ContestServer server(qb, host);
     server.SetLogger([&](std::string str){
-        std::cout << str << std::flush;
+        std::cout << str << std::endl;
     });
     
     // now RUN!

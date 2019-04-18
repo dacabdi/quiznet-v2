@@ -40,7 +40,7 @@ class ContestServer
         Host _host;
         TcpSocket _sock;
 
-        logger _log = [&](const std::string& str){}; //do nothing by default
+        logger _logger; //do nothing by default
 
         handler_map _handlers;
 
@@ -58,6 +58,8 @@ class ContestServer
         void writeContests(void);
         void loadQuestions(void);
         void writeQuestions(void);
+
+        void _log(std::string str);
 };
 
 #endif // __CONTEST_SERVER_H__

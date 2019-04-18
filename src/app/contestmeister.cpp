@@ -19,7 +19,8 @@ namespace constants {
     "USAGE  : contestmeister TARGETHOST PORT [OPTIONS]\n"
     "         Please notice that unless POSIXLY_CORRECT is set,\n"
     "         options will be taken in any order.\n\n"
-    "DESC   : contestmeister runs the QuizNet\nContestmeister client pointing\n"
+    "DESC   : contestmeister runs the QuizNet\n"
+    "         Contestmeister client pointing\n"
     "         to server TARGETHOST:PORT\n\n"
     "OPTIONS:\n"
     " -f --file filename       run in non-interactive mode\n"
@@ -30,7 +31,7 @@ namespace constants {
         "|          QuizNet Contestmeister v2.0         |\n"
        "\\==============================================/\n");
     static const std::string version(
-        "contestmeister v1.0\n"
+        "contestmeister v2.0\n"
         "QuizNet Contestmeister Application\n"
         "Written by David Cabrera @ dacabdi89@ufl.edu\n"
         "University of Florida, CISE Department\n"
@@ -78,6 +79,11 @@ std::string displayInitSettings(void)
         << globalParams.paramTargetHost << std::endl;
     oss << "\tTarget port : "
         << globalParams.paramTargetPort << std::endl;
+    
+    if(globalParams.useFile)
+        oss << "\tUsing input file : " << globalParams.inputFile << std::endl;
+    
+    oss << std::endl;
 
     return oss.str();
 }
@@ -227,45 +233,4 @@ int main(int argc, char * const argv[])
     std::cout << "\nBh-Bh-Bye! :( \n" << std::endl;
 
     exit(EXIT_SUCCESS);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#include <iostream>
-
-int main()
-{
-    Host host("localhost", "3360");
-    ContestmeisterClient client(host);
-    client.run();
-    return 0;
 }

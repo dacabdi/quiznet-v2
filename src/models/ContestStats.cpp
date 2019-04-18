@@ -29,21 +29,21 @@ ContestStats ContestStats::deserialize(std::istream& iss)
     score_set set;
 
     // number of contestants
-    std::getline(iss, buff);
+    iss >> buff;
     try { contestants = (uint32_t)std::stoul(buff); }
     catch (const std::exception &e){
         throw Except("Failed to deserialize [contestants] field", ___WHERE, "Inner Exception: " + std::string(e.what()), false);
     }
 
     // highest score
-    std::getline(iss, buff);
+    iss >> buff;
     try { highest = (uint32_t)std::stoul(buff); }
     catch (const std::exception &e){
         throw Except("Failed to deserialize [highest-score] field", ___WHERE, "Inner Exception: " + std::string(e.what()), false);
     }
 
     // number of questions
-    std::getline(iss, buff);
+    iss >> buff;
     try { questions = std::stoul(buff); }
     catch (const std::exception &e){
         throw Except("Failed to deserialize [number-of-questions] field", ___WHERE, "Inner Exception: " + std::string(e.what()), false);

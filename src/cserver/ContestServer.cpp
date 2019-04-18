@@ -7,13 +7,14 @@ ContestServer::ContestServer(QuizBook& qb, Host host)
     _qb.onDelete = [&](SolvedQuestion&, QuizBook&) { writeQuestions(); };
     _qb.onClear  = [&](QuizBook&) { writeQuestions(); };
     
+    loadQuestions();
     loadContests();
     initHandlers();
 }
 
 void ContestServer::SetLogger(logger log)
 {
-    _log = log;
+    _logger = log;
 }
 
 void ContestServer::run(void)
@@ -21,7 +22,7 @@ void ContestServer::run(void)
     _sock.Bind(_host);
     _sock.Listen();
     
-    _log("Server is listening on: " + _host.fullName());
+    _log("Server is listening on port " + std::to_string(_sock.local().port()));
 
     _reqkill = false;
     while(!_reqkill)
@@ -35,7 +36,10 @@ void ContestServer::run(void)
             std::thread client_thread([&](TcpSocket clientSock) 
             {
                 try {
-                    if(!handshake(clientSock)) return; // failed to handshake
+                    if(!handshake(clientSock)) {
+                        _log("Client " + clientSock.peer().fullName() + " failed handshake");
+                        return; // failed to handshake
+                    }
                     _log("Client " + clientSock.peer().fullName() + " finished handshake succesfully");
                     requestLoop(clientSock);
                 } catch (const std::exception& e) {
@@ -70,8 +74,10 @@ bool ContestServer::handshake(TcpSocket& conn)
     std::string msg_str = conn.read();
     Message msg(msg_str);
 
-    if(msg.type() != 'n' || msg.body().content() != "contestmeister\n")
+    if(msg.type() != 'n' || msg.body().content() != "contestmeister\n") {   
+        conn.write(Message('e', ProtoError(FAILGT, "Only contestmeister clients allowed").serialize()).serialize());
         return false;
+    }
 
     // ack handshake
     Message h_ack('o', "");
@@ -117,7 +123,7 @@ void ContestServer::requestLoop(TcpSocket& conn)
 void ContestServer::initHandlers(void)
 {
     // p -> put a question in the bank
-    _handlers.emplace('p', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('p', [&](const Message& request, bool &UNUSED(leave)) -> Message
     {
         std::istringstream iss = request.body().contentStream();
         std::string id_buff;
@@ -135,7 +141,7 @@ void ContestServer::initHandlers(void)
     });
 
     // d -> delete question by id
-    _handlers.emplace('d', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('d', [&](const Message& request, bool &UNUSED(leave)) -> Message
     {
         std::string content = request.body().content();
         uint32_t id;
@@ -153,7 +159,7 @@ void ContestServer::initHandlers(void)
     });
 
     //g -> get a question from the bank
-    _handlers.emplace('g', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('g', [&](const Message& request, bool &UNUSED(leave)) -> Message
     {   
         std::string content = request.body().content();
         uint32_t id;
@@ -171,7 +177,7 @@ void ContestServer::initHandlers(void)
     });
 
     // q -> quit client
-    _handlers.emplace('q', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('q', [&](const Message& UNUSED(request), bool &leave) -> Message
     {
         _log("Client requested to disconnect");
         leave = true;
@@ -179,7 +185,7 @@ void ContestServer::initHandlers(void)
     });
 
     // k -> kill server client
-    _handlers.emplace('k', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('k', [&](const Message& UNUSED(request), bool &leave) -> Message
     {
         _log("Server received a kill request.");
         leave = true;
@@ -189,7 +195,7 @@ void ContestServer::initHandlers(void)
     });
 
     // s -> set contest
-    _handlers.emplace('s', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('s', [&](const Message& request, bool &UNUSED(leave)) -> Message
     {
         try {
             uint32_t id = (uint32_t)std::stoul(request.body().content());
@@ -207,7 +213,7 @@ void ContestServer::initHandlers(void)
         }
     });
 
-    _handlers.emplace('a', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('a', [&](const Message& request, bool &UNUSED(leave)) -> Message
     {   
         std::istringstream content = request.body().contentStream();
         
@@ -226,6 +232,7 @@ void ContestServer::initHandlers(void)
 
             SolvedQuestion q = _qb.getQuestionById(qid);
             _contests.at(cid).addQuestion(qid, q);
+            writeContests();
 
             return Message('o', "Added question " + std::to_string(qid) + " to contest " + std::to_string(cid));
         } catch (const std::exception& e) {
@@ -235,7 +242,7 @@ void ContestServer::initHandlers(void)
         }
     });
 
-    _handlers.emplace('b', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('b', [&](const Message& request, bool &UNUSED(leave)) -> Message
     {   
         std::istringstream content = request.body().contentStream();
         
@@ -252,11 +259,11 @@ void ContestServer::initHandlers(void)
             uint16_t port = contest_session->getSocket().local().port();
             std::string response = "Contest " + std::to_string(cid) + " opened on port " + std::to_string(port);
             
-            std::thread th([&](ContestSession * cs, uint32_t id) -> void
+            std::thread th([&](ContestSession * cs, uint32_t id, std::string message) -> void
             {
-                _log(response);
+                _log(message);
                 uint16_t port = cs->getSocket().local().port();
-                cs->run(3); // TODO put back to one minute!
+                cs->run(10);
                 _log("Contest " + std::to_string(cid) + " ended on port " + std::to_string(port));
                 ContestStats stats = cs->getStats();
                 _contests.at(id).setRun();
@@ -264,7 +271,7 @@ void ContestServer::initHandlers(void)
                 writeContests();
                 delete cs;
                 _log("Thread for contest " + std::to_string(cid) + " on port " + std::to_string(port) + " is being collected");
-            }, contest_session, cid);
+            }, contest_session, cid, response);
 
             th.detach();
 
@@ -274,7 +281,7 @@ void ContestServer::initHandlers(void)
         }
     });
 
-    _handlers.emplace('l', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('l', [&](const Message& UNUSED(request), bool &UNUSED(leave)) -> Message
     {   
         std::ostringstream oss;
         for(auto& c : _contests)
@@ -283,7 +290,7 @@ void ContestServer::initHandlers(void)
         return Message('o', oss.str());
     });
 
-    _handlers.emplace('r', [&](const Message& request, bool &leave) -> Message
+    _handlers.emplace('r', [&](const Message& request, bool &UNUSED(leave)) -> Message
     {   
         std::string content = request.body().content();
     
@@ -332,4 +339,9 @@ void ContestServer::writeQuestions(void)
     std::ofstream file(___QUESTIONS_BANK, std::ios::out);
     _qb.writeTo(file);
     file.close();
+}
+
+void ContestServer::_log(std::string str)
+{
+    if(_logger) _logger(str);
 }

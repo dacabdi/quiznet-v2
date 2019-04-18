@@ -1,4 +1,5 @@
 #include "Host.h"
+#include "ContestantClient.h"
 
 #include <iostream>
 #include <string>
@@ -71,6 +72,8 @@ std::string displayInitSettings(void)
         << globalParams.paramTargetHost << std::endl;
     oss << "\tTarget port : "
         << globalParams.paramTargetPort << std::endl;
+
+    oss << std::endl;
 
     return oss.str();
 }

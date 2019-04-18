@@ -71,7 +71,7 @@ void ContestmeisterClient::init_handlers(void)
     {
         // send message TODO handle exceptions in this process
         uint32_t id = 0;
-        try { id = std::stoul(line.substr(1)); }
+        try { id = (uint32_t)std::stoul(line.substr(1)); }
         catch (const std::exception& e){ _os << "Invalid request format" << std::endl; return; }
 
         SolvedQuestion sq(_is);
@@ -107,7 +107,7 @@ void ContestmeisterClient::init_handlers(void)
     _handlers.emplace('d', [&](std::string line)
     {
         // send message TODO handle exceptions in this process
-        uint32_t id = std::stoul(line.substr(1));
+        uint32_t id = (uint32_t)std::stoul(line.substr(1));
         Message req('d', std::to_string(id) + "\n");
         _sock.write(req.serialize());
         
@@ -141,7 +141,7 @@ void ContestmeisterClient::init_handlers(void)
     _handlers.emplace('g', [&](std::string line)
     {
         // send message TODO handle exceptions in this process
-        uint32_t id = std::stoul(line.substr(1));
+        uint32_t id = (uint32_t)std::stoul(line.substr(1));
         Message req('g', std::to_string(id) + "\n");
         _sock.write(req.serialize());
         
@@ -172,7 +172,7 @@ void ContestmeisterClient::init_handlers(void)
         _os << "Unkown server response" << std::endl;
     });
 
-    _handlers.emplace('q', [&](std::string line)
+    _handlers.emplace('q', [&](std::string UNUSED(line))
     {
         Message req('q', "");
         _sock.write(req.serialize());
@@ -205,7 +205,7 @@ void ContestmeisterClient::init_handlers(void)
         _os << "Unkown server response" << std::endl;
     });
 
-    _handlers.emplace('k', [&](std::string line)
+    _handlers.emplace('k', [&](std::string UNUSED(line))
     {
         Message req('k', "");
         _sock.write(req.serialize());   
@@ -241,7 +241,7 @@ void ContestmeisterClient::init_handlers(void)
     _handlers.emplace('s', [&](std::string line)
     {
         // send message TODO handle exceptions in this process
-        uint32_t id = std::stoul(line.substr(1));
+        uint32_t id = (uint32_t)std::stoul(line.substr(1));
         Message req('s', std::to_string(id) + "\n");
         _sock.write(req.serialize());
         
@@ -338,7 +338,7 @@ void ContestmeisterClient::init_handlers(void)
         _os << "Unkown server response" << std::endl;
     });
 
-    _handlers.emplace('l', [&](std::string line)
+    _handlers.emplace('l', [&](std::string UNUSED(line))
     {
         // send message TODO handle exceptions in this process
         Message req('l', "");

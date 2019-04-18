@@ -82,9 +82,10 @@ Contest Contest::deserialize(std::istream& iss)
     if(run == "true")
     {
         contest.setRun();
-        ContestStats stats = ContestStats::deserialize(iss);
-        contest.setStats(stats);
     }
+
+    ContestStats stats = ContestStats::deserialize(iss);
+    contest.setStats(stats);
 
     return contest;
 }

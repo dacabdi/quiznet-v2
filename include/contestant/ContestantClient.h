@@ -31,9 +31,9 @@ class ContestantClient
 
         Contestant _contestant; // self representation
 
-        bool        joinContest(void);
-        void        playAllRounds(void);
-        void        playRound(Message round_msg, uint32_t round);
+        bool joinContest(void);
+        void playAllRounds(void);
+        void playRound(Message round_msg, uint32_t round);
 };
 
 #endif // __CONTESTANT_CLIENT_H_

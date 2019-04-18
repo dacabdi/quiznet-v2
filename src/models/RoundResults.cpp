@@ -90,9 +90,9 @@ std::string RoundResults::present(void) const
     std::ostringstream oss;
 
     oss << (correct() ? "Correct" : "Incorrect") << ". "
-        << (uint32_t)(std::floor(ratio()) * 100)
+        << (ratio() * 100)
         << "% of contestants answered this question correctly." << std::endl
-        << " Your score is " << score() << "/" << questions() << ". "
+        << "Your score is " << score() << "/" << questions() << ". "
         << "The top score is currently " << max() << "/" << questions() << "." << std::endl;
 
     return oss.str();
