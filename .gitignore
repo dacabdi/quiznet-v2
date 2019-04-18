@@ -40,3 +40,7 @@ doc/html/
 # ignore builds
 bin/
 bin
+
+cserver
+contestmeister
+contestant

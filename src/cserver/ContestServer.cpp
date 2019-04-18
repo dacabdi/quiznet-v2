@@ -263,7 +263,7 @@ void ContestServer::initHandlers(void)
             {
                 _log(message);
                 uint16_t port = cs->getSocket().local().port();
-                cs->run(10);
+                cs->run(60);
                 _log("Contest " + std::to_string(cid) + " ended on port " + std::to_string(port));
                 ContestStats stats = cs->getStats();
                 _contests.at(id).setRun();
